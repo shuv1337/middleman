@@ -1,6 +1,6 @@
-# @middleman/ui
+# @shuvlr/ui
 
-`@middleman/ui` is the Middleman web app built with TanStack Start, Vite, and React.
+`@shuvlr/ui` is the Shuvlr web app built with TanStack Start, Vite, and React.
 
 ## What it contains
 
@@ -14,10 +14,10 @@
 Run from repo root:
 
 ```bash
-pnpm --filter @middleman/ui dev
-pnpm --filter @middleman/ui build
-pnpm --filter @middleman/ui preview
-pnpm --filter @middleman/ui test
+pnpm --filter @shuvlr/ui dev
+pnpm --filter @shuvlr/ui build
+pnpm --filter @shuvlr/ui preview
+pnpm --filter @shuvlr/ui test
 ```
 
 ## Local runtime

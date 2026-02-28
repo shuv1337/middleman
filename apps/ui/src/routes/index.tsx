@@ -27,6 +27,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import { chooseFallbackAgentId } from '@/lib/agent-hierarchy'
 import type { ArtifactReference } from '@/lib/artifacts'
 import { collectArtifactsFromMessages } from '@/lib/collect-artifacts'
@@ -97,7 +98,16 @@ function parseRouteStateFromPathname(pathname: string): AppRouteState {
 }
 
 function parseRouteStateFromLocation(pathname: string, search: unknown): AppRouteState {
-  const routeSearch = search && typeof search === 'object' ? (search as AppRouteSearch) : {}
+  const routeSearch: AppRouteSearch =
+    search && typeof search === 'object'
+      ? (search as AppRouteSearch)
+      : typeof search === 'string'
+        ? {
+            view: new URLSearchParams(search).get('view') ?? undefined,
+            agent: new URLSearchParams(search).get('agent') ?? undefined,
+          }
+        : {}
+
   const view = typeof routeSearch.view === 'string' ? routeSearch.view : undefined
   const agentId = typeof routeSearch.agent === 'string' ? routeSearch.agent : undefined
 
@@ -151,6 +161,33 @@ function routeStatesEqual(left: AppRouteState, right: AppRouteState): boolean {
   return false
 }
 
+function useOptionalRouterNavigate(): ReturnType<typeof useNavigate> | null {
+  try {
+    return useNavigate()
+  } catch {
+    return null
+  }
+}
+
+function useOptionalRouterLocation(): ReturnType<typeof useLocation> | null {
+  try {
+    return useLocation()
+  } catch {
+    return null
+  }
+}
+
+function resolveWindowLocationSnapshot(): { pathname: string; search: string } {
+  if (typeof window === 'undefined') {
+    return { pathname: '/', search: '' }
+  }
+
+  return {
+    pathname: window.location.pathname,
+    search: window.location.search,
+  }
+}
+
 function resolveDefaultWsUrl(): string {
   if (typeof window === 'undefined') {
     return DEFAULT_DEV_WS_URL
@@ -163,6 +200,25 @@ function resolveDefaultWsUrl(): string {
   const wsPort = uiPort <= 47188 ? 47187 : 47287
 
   return `${protocol}//${hostname}:${wsPort}`
+}
+
+function resolveAuthenticatedWsUrl(wsUrl: string): string {
+  const authToken =
+    typeof import.meta !== 'undefined' && typeof import.meta.env?.VITE_SHUVLR_AUTH_TOKEN === 'string'
+      ? import.meta.env.VITE_SHUVLR_AUTH_TOKEN.trim()
+      : ''
+
+  if (!authToken) {
+    return wsUrl
+  }
+
+  try {
+    const parsed = new URL(wsUrl)
+    parsed.searchParams.set('authToken', authToken)
+    return parsed.toString()
+  } catch {
+    return wsUrl
+  }
 }
 
 function inferModelPreset(agent: AgentDescriptor): ManagerModelPreset | undefined {
@@ -332,11 +388,11 @@ interface PendingResponseStart {
 }
 
 export function IndexPage() {
-  const wsUrl = import.meta.env.VITE_MIDDLEMAN_WS_URL ?? resolveDefaultWsUrl()
+  const wsUrl = resolveAuthenticatedWsUrl(import.meta.env.VITE_SHUVLR_WS_URL ?? resolveDefaultWsUrl())
   const clientRef = useRef<ManagerWsClient | null>(null)
   const messageInputRef = useRef<MessageInputHandle | null>(null)
-  const navigate = useNavigate()
-  const location = useLocation()
+  const navigate = useOptionalRouterNavigate()
+  const routerLocation = useOptionalRouterLocation()
 
   const [state, setState] = useState<ManagerWsState>({
     connected: false,
@@ -366,10 +422,10 @@ export function IndexPage() {
   const [deleteManagerError, setDeleteManagerError] = useState<string | null>(null)
   const [isDeletingManager, setIsDeletingManager] = useState(false)
 
-  const routeState = useMemo(
-    () => parseRouteStateFromLocation(location.pathname, location.search),
-    [location.pathname, location.search],
-  )
+  const routeState = useMemo(() => {
+    const locationSnapshot = routerLocation ?? resolveWindowLocationSnapshot()
+    return parseRouteStateFromLocation(locationSnapshot.pathname, locationSnapshot.search)
+  }, [routerLocation])
   const activeView: ActiveView = routeState.view
 
   const [isDraggingFiles, setIsDraggingFiles] = useState(false)
@@ -510,12 +566,26 @@ export function IndexPage() {
         return
       }
 
-      void navigate({
-        to: '/',
-        search: toRouteSearch(normalizedRouteState),
-        replace,
-        resetScroll: false,
-      })
+      if (navigate) {
+        void navigate({
+          to: '/',
+          search: toRouteSearch(normalizedRouteState),
+          replace,
+          resetScroll: false,
+        })
+        return
+      }
+
+      if (typeof window !== 'undefined') {
+        const nextSearch = new URLSearchParams(toRouteSearch(normalizedRouteState) as Record<string, string>).toString()
+        const nextUrl = nextSearch ? `/?${nextSearch}` : '/'
+
+        if (replace) {
+          window.history.replaceState(null, '', nextUrl)
+        } else {
+          window.history.pushState(null, '', nextUrl)
+        }
+      }
     },
     [navigate, routeState],
   )
@@ -878,7 +948,8 @@ export function IndexPage() {
   }, [activeView])
 
   return (
-    <main className="h-screen bg-background text-foreground">
+    <TooltipProvider>
+      <main className="h-screen bg-background text-foreground">
       <div className="flex h-screen w-full min-w-0 overflow-hidden bg-background">
         <AgentSidebar
           connected={state.connected}
@@ -1143,7 +1214,8 @@ export function IndexPage() {
           </div>
         </div>
       </OverlayDialog>
-    </main>
+      </main>
+    </TooltipProvider>
   )
 }
 

@@ -33,6 +33,7 @@ const MANAGER_SCHEDULES_ENDPOINT_PATTERN = /^\/api\/managers\/([^/]+)\/schedules
 const AGENT_COMPACT_ENDPOINT_PATTERN = /^\/api\/agents\/([^/]+)\/compact$/;
 const SETTINGS_ENV_ENDPOINT_PATH = "/api/settings/env";
 const SETTINGS_AUTH_ENDPOINT_PATH = "/api/settings/auth";
+const SETTINGS_MODELS_ENDPOINT_PATH = "/api/settings/models";
 const SETTINGS_AUTH_LOGIN_ENDPOINT_PATH = "/api/settings/auth/login";
 const MANAGER_SLACK_INTEGRATION_ENDPOINT_PATTERN = /^\/api\/managers\/([^/]+)\/integrations\/slack$/;
 const MANAGER_SLACK_INTEGRATION_TEST_ENDPOINT_PATTERN =
@@ -115,6 +116,8 @@ export class SwarmWebSocketServer {
   private readonly host: string;
   private readonly port: number;
   private readonly allowNonManagerSubscriptions: boolean;
+  private readonly authToken: string | undefined;
+  private readonly allowedOrigins: Set<string> | undefined;
   private readonly integrationRegistry: IntegrationRegistryService | null;
   private readonly gsuiteIntegration: GsuiteIntegrationService | null;
 
@@ -173,6 +176,8 @@ export class SwarmWebSocketServer {
     host: string;
     port: number;
     allowNonManagerSubscriptions: boolean;
+    authToken?: string;
+    allowedOrigins?: string[];
     integrationRegistry?: IntegrationRegistryService;
     gsuiteIntegration?: GsuiteIntegrationService;
   }) {
@@ -180,6 +185,11 @@ export class SwarmWebSocketServer {
     this.host = options.host;
     this.port = options.port;
     this.allowNonManagerSubscriptions = options.allowNonManagerSubscriptions;
+    this.authToken = normalizeAuthToken(options.authToken);
+    this.allowedOrigins =
+      options.allowedOrigins && options.allowedOrigins.length > 0
+        ? new Set(options.allowedOrigins.map((origin) => origin.trim()).filter((origin) => origin.length > 0))
+        : undefined;
     this.integrationRegistry = options.integrationRegistry ?? null;
     this.gsuiteIntegration = options.gsuiteIntegration ?? null;
   }
@@ -197,7 +207,17 @@ export class SwarmWebSocketServer {
     this.httpServer = httpServer;
     this.wss = wss;
 
-    this.wss.on("connection", (socket) => {
+    this.wss.on("connection", (socket, request) => {
+      if (!this.isOriginAllowed(request.headers.origin)) {
+        socket.close(1008, "Forbidden");
+        return;
+      }
+
+      if (this.authToken && !this.isAuthorizedRequest(request, true)) {
+        socket.close(1008, "Unauthorized");
+        return;
+      }
+
       socket.on("message", (raw) => {
         void this.handleSocketMessage(socket, raw);
       });
@@ -277,6 +297,20 @@ export class SwarmWebSocketServer {
       `http://${request.headers.host ?? `${this.host}:${this.port}`}`
     );
 
+    const allowedMethods = this.resolveAllowedHttpMethods(requestUrl.pathname);
+
+    if (!this.isOriginAllowed(request.headers.origin)) {
+      this.applyCorsHeaders(request, response, allowedMethods);
+      this.sendJson(response, 403, { error: "Origin is not allowed." });
+      return;
+    }
+
+    if (this.authToken && request.method !== "OPTIONS" && !this.isAuthorizedRequest(request, false)) {
+      this.applyCorsHeaders(request, response, allowedMethods);
+      this.sendJson(response, 401, { error: "Unauthorized" });
+      return;
+    }
+
     try {
       if (requestUrl.pathname === REBOOT_ENDPOINT_PATH) {
         this.handleRebootHttpRequest(request, response);
@@ -309,6 +343,11 @@ export class SwarmWebSocketServer {
         requestUrl.pathname.startsWith(`${SETTINGS_ENV_ENDPOINT_PATH}/`)
       ) {
         await this.handleSettingsEnvHttpRequest(request, response, requestUrl);
+        return;
+      }
+
+      if (requestUrl.pathname === SETTINGS_MODELS_ENDPOINT_PATH) {
+        await this.handleSettingsModelsHttpRequest(request, response);
         return;
       }
 
@@ -362,6 +401,8 @@ export class SwarmWebSocketServer {
         requestUrl.pathname.startsWith(`${SETTINGS_ENV_ENDPOINT_PATH}/`)
       ) {
         this.applyCorsHeaders(request, response, "GET, PUT, DELETE, OPTIONS");
+      } else if (requestUrl.pathname === SETTINGS_MODELS_ENDPOINT_PATH) {
+        this.applyCorsHeaders(request, response, "GET, OPTIONS");
       } else if (
         requestUrl.pathname === SETTINGS_AUTH_ENDPOINT_PATH ||
         requestUrl.pathname.startsWith(`${SETTINGS_AUTH_ENDPOINT_PATH}/`)
@@ -822,6 +863,35 @@ export class SwarmWebSocketServer {
     this.applyCorsHeaders(request, response, methods);
     response.setHeader("Allow", methods);
     this.sendJson(response, 405, { error: "Method Not Allowed" });
+  }
+
+  private async handleSettingsModelsHttpRequest(
+    request: IncomingMessage,
+    response: ServerResponse
+  ): Promise<void> {
+    const methods = "GET, OPTIONS";
+
+    if (request.method === "OPTIONS") {
+      this.applyCorsHeaders(request, response, methods);
+      response.statusCode = 204;
+      response.end();
+      return;
+    }
+
+    if (request.method !== "GET") {
+      this.applyCorsHeaders(request, response, methods);
+      response.setHeader("Allow", methods);
+      this.sendJson(response, 405, { error: "Method Not Allowed" });
+      return;
+    }
+
+    this.applyCorsHeaders(request, response, methods);
+    const payload = await this.swarmManager.listSettingsModels();
+    this.sendJson(response, 200, {
+      ok: true,
+      defaultModelPreset: payload.defaultModelPreset,
+      models: payload.models
+    });
   }
 
   private async handleSettingsAuthHttpRequest(
@@ -1343,6 +1413,100 @@ export class SwarmWebSocketServer {
     this.sendJson(response, 405, { error: "Method Not Allowed" });
   }
 
+  private resolveAllowedHttpMethods(pathname: string): string {
+    if (pathname === REBOOT_ENDPOINT_PATH) {
+      return "POST, OPTIONS";
+    }
+
+    if (pathname === READ_FILE_ENDPOINT_PATH) {
+      return READ_FILE_METHODS;
+    }
+
+    if (pathname === TRANSCRIBE_ENDPOINT_PATH) {
+      return TRANSCRIBE_METHODS;
+    }
+
+    if (isSchedulesPath(pathname)) {
+      return "GET, OPTIONS";
+    }
+
+    if (AGENT_COMPACT_ENDPOINT_PATTERN.test(pathname)) {
+      return "POST, OPTIONS";
+    }
+
+    if (pathname === SETTINGS_ENV_ENDPOINT_PATH || pathname.startsWith(`${SETTINGS_ENV_ENDPOINT_PATH}/`)) {
+      return "GET, PUT, DELETE, OPTIONS";
+    }
+
+    if (pathname === SETTINGS_MODELS_ENDPOINT_PATH) {
+      return "GET, OPTIONS";
+    }
+
+    if (pathname === SETTINGS_AUTH_ENDPOINT_PATH || pathname.startsWith(`${SETTINGS_AUTH_ENDPOINT_PATH}/`)) {
+      return SETTINGS_AUTH_METHODS;
+    }
+
+    if (isSlackIntegrationPath(pathname) || isTelegramIntegrationPath(pathname)) {
+      return "GET, PUT, DELETE, POST, OPTIONS";
+    }
+
+    if (
+      pathname === GSUITE_INTEGRATION_ENDPOINT_PATH ||
+      pathname === GSUITE_INTEGRATION_OAUTH_CREDENTIALS_ENDPOINT_PATH ||
+      pathname === GSUITE_INTEGRATION_OAUTH_START_ENDPOINT_PATH ||
+      pathname === GSUITE_INTEGRATION_OAUTH_COMPLETE_ENDPOINT_PATH ||
+      pathname === GSUITE_INTEGRATION_TEST_ENDPOINT_PATH
+    ) {
+      return "GET, PUT, DELETE, POST, OPTIONS";
+    }
+
+    return "GET, POST, PUT, PATCH, DELETE, OPTIONS";
+  }
+
+  private isOriginAllowed(originHeader: string | string[] | undefined): boolean {
+    if (!this.allowedOrigins || this.allowedOrigins.size === 0) {
+      return true;
+    }
+
+    if (typeof originHeader !== "string") {
+      return true;
+    }
+
+    return this.allowedOrigins.has(originHeader.trim());
+  }
+
+  private isAuthorizedRequest(request: IncomingMessage, allowQueryParamToken: boolean): boolean {
+    if (!this.authToken) {
+      return true;
+    }
+
+    const authHeader = request.headers.authorization;
+    if (typeof authHeader === "string") {
+      const token = parseBearerToken(authHeader);
+      if (token && token === this.authToken) {
+        return true;
+      }
+    }
+
+    if (allowQueryParamToken) {
+      try {
+        const requestUrl = new URL(
+          request.url ?? "/",
+          `http://${request.headers.host ?? `${this.host}:${this.port}`}`
+        );
+
+        const queryToken = requestUrl.searchParams.get("authToken")?.trim();
+        if (queryToken && queryToken === this.authToken) {
+          return true;
+        }
+      } catch {
+        return false;
+      }
+    }
+
+    return false;
+  }
+
   private async readJsonBody(request: IncomingMessage): Promise<unknown> {
     const body = await this.readRequestBody(request, MAX_HTTP_BODY_SIZE_BYTES);
 
@@ -1381,12 +1545,17 @@ export class SwarmWebSocketServer {
   }
 
   private applyCorsHeaders(request: IncomingMessage, response: ServerResponse, methods: string): void {
-    const origin = typeof request.headers.origin === "string" ? request.headers.origin : "*";
+    const origin = typeof request.headers.origin === "string" ? request.headers.origin.trim() : undefined;
 
-    response.setHeader("Access-Control-Allow-Origin", origin);
-    response.setHeader("Vary", "Origin");
+    if (origin && this.isOriginAllowed(origin)) {
+      response.setHeader("Access-Control-Allow-Origin", origin);
+      response.setHeader("Vary", "Origin");
+    } else if (!this.allowedOrigins || this.allowedOrigins.size === 0) {
+      response.setHeader("Access-Control-Allow-Origin", "*");
+    }
+
     response.setHeader("Access-Control-Allow-Methods", methods);
-    response.setHeader("Access-Control-Allow-Headers", "content-type");
+    response.setHeader("Access-Control-Allow-Headers", "content-type, authorization");
   }
 
   private async parseJsonBody(request: IncomingMessage, maxBytes: number): Promise<unknown> {
@@ -2317,6 +2486,16 @@ function extractAuthCredentialToken(credential: AuthCredential | undefined): str
   }
 
   return undefined;
+}
+
+function parseBearerToken(headerValue: string): string | undefined {
+  const trimmed = headerValue.trim();
+  if (!trimmed.toLowerCase().startsWith("bearer ")) {
+    return undefined;
+  }
+
+  const token = trimmed.slice("bearer ".length).trim();
+  return token.length > 0 ? token : undefined;
 }
 
 function normalizeAuthToken(value: unknown): string | undefined {

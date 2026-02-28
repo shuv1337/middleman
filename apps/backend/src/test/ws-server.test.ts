@@ -682,6 +682,20 @@ describe('SwarmWebSocketServer', () => {
       ).toMatchObject({
         isSet: false,
       })
+      expect(
+        initialPayload.variables.find(
+          (entry) => entry.name === 'SHUVDO_API' && entry.skillName === 'shuvdo',
+        ),
+      ).toMatchObject({
+        isSet: false,
+      })
+      expect(
+        initialPayload.variables.find(
+          (entry) => entry.name === 'SHUVDO_TOKEN' && entry.skillName === 'shuvdo',
+        ),
+      ).toMatchObject({
+        isSet: false,
+      })
 
       const updateResponse = await fetch(`http://${config.host}:${config.port}/api/settings/env`, {
         method: 'PUT',
@@ -740,6 +754,43 @@ describe('SwarmWebSocketServer', () => {
         process.env.BRAVE_API_KEY = previousBraveApiKey
       }
 
+      await server.stop()
+    }
+  })
+
+  it('lists model presets through /api/settings/models', async () => {
+    const port = await getAvailablePort()
+    const config = await makeTempConfig(port)
+
+    const manager = new TestSwarmManager(config)
+    await manager.boot()
+
+    const server = new SwarmWebSocketServer({
+      swarmManager: manager,
+      host: config.host,
+      port: config.port,
+      allowNonManagerSubscriptions: config.allowNonManagerSubscriptions,
+    })
+
+    await server.start()
+
+    try {
+      const response = await fetch(`http://${config.host}:${config.port}/api/settings/models`)
+      expect(response.status).toBe(200)
+
+      const payload = (await response.json()) as {
+        ok?: boolean
+        defaultModelPreset?: string
+        models?: Array<{ preset: string; provider: string; modelId: string; available: boolean }>
+      }
+
+      expect(payload.ok).toBe(true)
+      expect(payload.defaultModelPreset).toBe('pi-codex')
+      expect(Array.isArray(payload.models)).toBe(true)
+      expect(payload.models?.some((entry) => entry.preset === 'pi-codex')).toBe(true)
+      expect(payload.models?.some((entry) => entry.preset === 'pi-opus')).toBe(true)
+      expect(payload.models?.some((entry) => entry.preset === 'codex-app')).toBe(true)
+    } finally {
       await server.stop()
     }
   })

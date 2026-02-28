@@ -3,7 +3,10 @@ name: cron-scheduling
 description: Create, list, and remove persistent scheduled tasks using cron expressions.
 ---
 
-# Cron Scheduling
+# Cron Scheduling (Legacy)
+
+Use this legacy skill only for backwards compatibility with existing cron schedules.
+Prefer the `shuvdo` skill for new reminders/tasks.
 
 Use this skill when the user asks to schedule, reschedule, or cancel reminders/tasks for later.
 

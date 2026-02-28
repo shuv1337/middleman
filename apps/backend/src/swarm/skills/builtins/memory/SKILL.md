@@ -12,6 +12,8 @@ Use this skill when the user explicitly asks to:
 
 Do not write memory for normal one-off requests.
 
+Do not use memory as a task/reminder queue or open follow-up tracker. Use the Shuvdo workflow (lists, reminders, projects, milestones) for actionable work management.
+
 ## File location
 - Persistent memory files are stored at `${SWARM_DATA_DIR}/memory/<agentId>.md`.
 - In this runtime, use `${SWARM_MEMORY_FILE}` (also shown in your loaded context).

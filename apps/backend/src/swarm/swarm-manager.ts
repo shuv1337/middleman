@@ -3,7 +3,6 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, readdir, rename, unlink, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { getModel, type Model } from "@mariozechner/pi-ai";
 import {
   AuthStorage,
   DefaultResourceLoader,
@@ -38,6 +37,7 @@ import {
   parseSwarmModelPreset,
   resolveModelDescriptorFromPreset
 } from "./model-presets.js";
+import { getModelAvailabilityHints, resolveModelWithMeta } from "./model-resolution.js";
 import type {
   RuntimeImageAttachment,
   RuntimeErrorEvent,
@@ -46,6 +46,7 @@ import type {
   SwarmAgentRuntime
 } from "./runtime-types.js";
 import { buildSwarmTools, type SwarmToolHost } from "./swarm-tools.js";
+import { createShuvdoClient, type ShuvdoClient } from "./shuvdo-client.js";
 import type {
   AcceptedDeliveryMode,
   AgentMessageEvent,
@@ -126,6 +127,7 @@ const REPO_CRON_SCHEDULING_SKILL_RELATIVE_PATH = ".swarm/skills/cron-scheduling/
 const REPO_AGENT_BROWSER_SKILL_RELATIVE_PATH = ".swarm/skills/agent-browser/SKILL.md";
 const REPO_IMAGE_GENERATION_SKILL_RELATIVE_PATH = ".swarm/skills/image-generation/SKILL.md";
 const REPO_GSUITE_SKILL_RELATIVE_PATH = ".swarm/skills/gsuite/SKILL.md";
+const REPO_SHUVDO_SKILL_RELATIVE_PATH = ".swarm/skills/shuvdo/SKILL.md";
 const BUILT_IN_MEMORY_SKILL_RELATIVE_PATH = "apps/backend/src/swarm/skills/builtins/memory/SKILL.md";
 const BUILT_IN_BRAVE_SEARCH_SKILL_RELATIVE_PATH =
   "apps/backend/src/swarm/skills/builtins/brave-search/SKILL.md";
@@ -136,6 +138,7 @@ const BUILT_IN_AGENT_BROWSER_SKILL_RELATIVE_PATH =
 const BUILT_IN_IMAGE_GENERATION_SKILL_RELATIVE_PATH =
   "apps/backend/src/swarm/skills/builtins/image-generation/SKILL.md";
 const BUILT_IN_GSUITE_SKILL_RELATIVE_PATH = "apps/backend/src/swarm/skills/builtins/gsuite/SKILL.md";
+const BUILT_IN_SHUVDO_SKILL_RELATIVE_PATH = "apps/backend/src/swarm/skills/builtins/shuvdo/SKILL.md";
 const SWARM_MANAGER_DIR = fileURLToPath(new URL(".", import.meta.url));
 const BACKEND_PACKAGE_DIR = resolve(SWARM_MANAGER_DIR, "..", "..");
 const BUILT_IN_MEMORY_SKILL_FALLBACK_PATH = resolve(
@@ -192,7 +195,16 @@ const BUILT_IN_GSUITE_SKILL_FALLBACK_PATH = resolve(
   "gsuite",
   "SKILL.md"
 );
-const DEFAULT_MEMORY_FILE_CONTENT = `# Swarm Memory
+const BUILT_IN_SHUVDO_SKILL_FALLBACK_PATH = resolve(
+  BACKEND_PACKAGE_DIR,
+  "src",
+  "swarm",
+  "skills",
+  "builtins",
+  "shuvdo",
+  "SKILL.md"
+);
+const DEFAULT_MEMORY_FILE_CONTENT = `# Shuvlr Memory
 
 ## User Preferences
 - (none yet)
@@ -201,9 +213,6 @@ const DEFAULT_MEMORY_FILE_CONTENT = `# Swarm Memory
 - (none yet)
 
 ## Decisions
-- (none yet)
-
-## Open Follow-ups
 - (none yet)
 `;
 const SKILL_FRONTMATTER_BLOCK_PATTERN = /^---\s*\r?\n([\s\S]*?)\r?\n---\s*(?:\r?\n|$)/;
@@ -333,6 +342,7 @@ export class SwarmManager extends EventEmitter implements SwarmToolHost {
   private readonly originalProcessEnvByName = new Map<string, string | undefined>();
   private skillMetadata: SkillMetadata[] = [];
   private secrets: Record<string, string> = {};
+  private shuvdoClient: ShuvdoClient | undefined;
 
   private archetypePromptRegistry: ArchetypePromptRegistry = createEmptyArchetypePromptRegistry();
 
@@ -359,6 +369,7 @@ export class SwarmManager extends EventEmitter implements SwarmToolHost {
 
     await this.ensureDirectories();
     await this.loadSecretsStore();
+    this.refreshShuvdoClient();
     await this.reloadSkillMetadata();
 
     try {
@@ -379,6 +390,7 @@ export class SwarmManager extends EventEmitter implements SwarmToolHost {
       this.descriptors.set(descriptor.agentId, descriptor);
     }
 
+    this.ensurePrimaryManagerForBoot();
     await this.ensureMemoryFilesForBoot();
     await this.saveStore();
 
@@ -1312,6 +1324,32 @@ export class SwarmManager extends EventEmitter implements SwarmToolHost {
     return this.config;
   }
 
+  async listSettingsModels(): Promise<{
+    defaultModelPreset: SwarmModelPreset;
+    models: Array<{
+      preset: SwarmModelPreset;
+      provider: string;
+      modelId: string;
+      thinkingLevel: string;
+      available: boolean;
+    }>;
+  }> {
+    const authStorage = AuthStorage.create(this.config.paths.authFile);
+    const modelRegistry = new ModelRegistry(authStorage);
+    const modelHints = getModelAvailabilityHints(modelRegistry);
+
+    return {
+      defaultModelPreset: this.config.defaultModelPreset ?? DEFAULT_SWARM_MODEL_PRESET,
+      models: modelHints.map((hint) => ({
+        preset: hint.preset,
+        provider: hint.descriptor.provider,
+        modelId: hint.descriptor.modelId,
+        thinkingLevel: hint.descriptor.thinkingLevel,
+        available: hint.available
+      }))
+    };
+  }
+
   async listSettingsEnv(): Promise<SkillEnvRequirement[]> {
     if (this.skillMetadata.length === 0) {
       await this.reloadSkillMetadata();
@@ -1378,6 +1416,7 @@ export class SwarmManager extends EventEmitter implements SwarmToolHost {
     }
 
     await this.saveSecretsStore();
+    this.refreshShuvdoClient();
   }
 
   async deleteSettingsEnv(name: string): Promise<void> {
@@ -1393,6 +1432,7 @@ export class SwarmManager extends EventEmitter implements SwarmToolHost {
     delete this.secrets[normalizedName];
     this.restoreProcessEnvForSecret(normalizedName);
     await this.saveSecretsStore();
+    this.refreshShuvdoClient();
   }
 
   async listSettingsAuth(): Promise<SettingsAuthProvider[]> {
@@ -1521,6 +1561,36 @@ export class SwarmManager extends EventEmitter implements SwarmToolHost {
     return normalizeOptionalAgentId(this.config.managerId);
   }
 
+  private ensurePrimaryManagerForBoot(): void {
+    const hasActiveManager = Array.from(this.descriptors.values()).some(
+      (descriptor) => descriptor.role === "manager" && descriptor.status !== "terminated"
+    );
+
+    if (hasActiveManager) {
+      return;
+    }
+
+    const configuredManagerId = this.getConfiguredManagerId() ?? "manager";
+    const managerId = this.generateUniqueManagerId(configuredManagerId);
+    const createdAt = this.now();
+
+    const descriptor: AgentDescriptor = {
+      agentId: managerId,
+      displayName: managerId,
+      role: "manager",
+      managerId,
+      archetypeId: MANAGER_ARCHETYPE_ID,
+      status: "idle",
+      createdAt,
+      updatedAt: createdAt,
+      cwd: this.config.defaultCwd,
+      model: this.resolveDefaultModelDescriptor(),
+      sessionFile: join(this.config.paths.sessionsDir, `${managerId}.jsonl`)
+    };
+
+    this.descriptors.set(managerId, descriptor);
+  }
+
   private resolvePreferredManagerId(options?: { includeStoppedOnRestart?: boolean }): string | undefined {
     const includeStoppedOnRestart = options?.includeStoppedOnRestart ?? false;
     const configuredManagerId = this.getConfiguredManagerId();
@@ -1622,6 +1692,13 @@ export class SwarmManager extends EventEmitter implements SwarmToolHost {
       try {
         const runtime = await this.createRuntimeForDescriptor(descriptor, systemPrompt);
         this.runtimes.set(descriptor.agentId, runtime);
+
+        if (descriptor.status !== "idle") {
+          descriptor.status = "idle";
+          descriptor.updatedAt = this.now();
+          shouldPersist = true;
+        }
+
         const contextUsage = runtime.getContextUsage();
         descriptor.contextUsage = contextUsage;
         this.emitStatus(descriptor.agentId, descriptor.status, runtime.getPendingCount(), contextUsage);
@@ -1986,6 +2063,15 @@ export class SwarmManager extends EventEmitter implements SwarmToolHost {
     });
   }
 
+  private resolveShuvdoSkillPath(): string {
+    return this.resolveBuiltInSkillPath({
+      skillName: "shuvdo",
+      repoOverridePath: resolve(this.config.paths.rootDir, REPO_SHUVDO_SKILL_RELATIVE_PATH),
+      repositoryRelativePath: BUILT_IN_SHUVDO_SKILL_RELATIVE_PATH,
+      fallbackPath: BUILT_IN_SHUVDO_SKILL_FALLBACK_PATH
+    });
+  }
+
   private async reloadSkillMetadata(): Promise<void> {
     const skillPaths = [
       {
@@ -2011,6 +2097,10 @@ export class SwarmManager extends EventEmitter implements SwarmToolHost {
       {
         fallbackSkillName: "gsuite",
         path: this.resolveGsuiteSkillPath()
+      },
+      {
+        fallbackSkillName: "shuvdo",
+        path: this.resolveShuvdoSkillPath()
       }
     ];
 
@@ -2042,6 +2132,24 @@ export class SwarmManager extends EventEmitter implements SwarmToolHost {
     }
 
     return processValue;
+  }
+
+  private refreshShuvdoClient(): void {
+    const baseUrl = this.resolveEnvValue("SHUVDO_API")?.trim();
+    const token = this.resolveEnvValue("SHUVDO_TOKEN")?.trim();
+
+    if (!baseUrl || !token) {
+      this.shuvdoClient = undefined;
+      return;
+    }
+
+    this.shuvdoClient = createShuvdoClient({
+      baseUrl,
+      token,
+      onTelemetry: (event) => {
+        this.logDebug("telemetry:shuvdo_tool", event);
+      }
+    });
   }
 
   private async loadSecretsStore(): Promise<void> {
@@ -2217,7 +2325,9 @@ export class SwarmManager extends EventEmitter implements SwarmToolHost {
     descriptor: AgentDescriptor,
     systemPrompt: string
   ): Promise<SwarmAgentRuntime> {
-    const swarmTools = buildSwarmTools(this, descriptor);
+    const swarmTools = buildSwarmTools(this, descriptor, {
+      shuvdoClient: this.shuvdoClient
+    });
     const thinkingLevel = normalizeThinkingLevel(descriptor.model.thinkingLevel);
     const runtimeAgentDir =
       descriptor.role === "manager" ? this.config.paths.managerAgentDir : this.config.paths.agentDir;
@@ -2267,12 +2377,25 @@ export class SwarmManager extends EventEmitter implements SwarmToolHost {
           });
     await resourceLoader.reload();
 
-    const model = this.resolveModel(modelRegistry, descriptor.model);
-    if (!model) {
+    const { resolvedModel, resolutionMeta } = this.resolveModel(modelRegistry, descriptor.model);
+    if (!resolvedModel) {
+      const availableOptions = resolutionMeta.available
+        .map((entry) => `${entry.preset} (${entry.descriptor.provider}/${entry.descriptor.modelId})`)
+        .join(", ");
       throw new Error(
-        `Unable to resolve model ${descriptor.model.provider}/${descriptor.model.modelId}. ` +
-          "Install a model supported by @mariozechner/pi-ai."
+        `Unable to resolve requested model ${descriptor.model.provider}/${descriptor.model.modelId}. ` +
+          `${resolutionMeta.reason} Available presets: ${availableOptions || "none"}. ` +
+          "Set SHUVLR_DEFAULT_MODEL_PRESET or choose a valid manager model preset."
       );
+    }
+
+    if (resolutionMeta.strategy === "fallback_exact") {
+      this.logDebug("runtime:model_resolution:fallback", {
+        agentId: descriptor.agentId,
+        requestedModel: descriptor.model,
+        resolvedModel: resolutionMeta.resolvedModel,
+        reason: resolutionMeta.reason
+      });
     }
 
     const { session } = await createAgentSession({
@@ -2280,7 +2403,7 @@ export class SwarmManager extends EventEmitter implements SwarmToolHost {
       agentDir: runtimeAgentDir,
       authStorage,
       modelRegistry,
-      model,
+      model: resolvedModel,
       thinkingLevel: thinkingLevel as any,
       sessionManager: SessionManager.open(descriptor.sessionFile),
       resourceLoader,
@@ -2327,7 +2450,9 @@ export class SwarmManager extends EventEmitter implements SwarmToolHost {
     descriptor: AgentDescriptor,
     systemPrompt: string
   ): Promise<SwarmAgentRuntime> {
-    const swarmTools = buildSwarmTools(this, descriptor);
+    const swarmTools = buildSwarmTools(this, descriptor, {
+      shuvdoClient: this.shuvdoClient
+    });
     const memoryResources = await this.getMemoryRuntimeResources(descriptor);
     const swarmContextFiles = await this.getSwarmContextFiles(descriptor.cwd);
 
@@ -2366,8 +2491,12 @@ export class SwarmManager extends EventEmitter implements SwarmToolHost {
       tools: swarmTools,
       runtimeEnv: {
         SWARM_DATA_DIR: this.config.paths.dataDir,
-        SWARM_MEMORY_FILE: memoryResources.memoryContextFile.path
-      }
+        SWARM_MEMORY_FILE: memoryResources.memoryContextFile.path,
+        SHUVDO_API: this.resolveEnvValue("SHUVDO_API"),
+        SHUVDO_TOKEN: this.resolveEnvValue("SHUVDO_TOKEN")
+      },
+      sandboxMode: this.config.codexSandboxMode,
+      approvalPolicy: this.config.codexApprovalPolicy
     });
 
     this.logDebug("runtime:create:ready", {
@@ -2425,14 +2554,11 @@ export class SwarmManager extends EventEmitter implements SwarmToolHost {
     return sections.join("\n\n");
   }
 
-  private resolveModel(modelRegistry: ModelRegistry, descriptor: AgentModelDescriptor): Model<any> | undefined {
-    const direct = modelRegistry.find(descriptor.provider, descriptor.modelId);
-    if (direct) return direct;
-
-    const fromCatalog = getModel(descriptor.provider as any, descriptor.modelId as any);
-    if (fromCatalog) return fromCatalog;
-
-    return modelRegistry.getAll()[0];
+  private resolveModel(
+    modelRegistry: ModelRegistry,
+    descriptor: AgentModelDescriptor
+  ): ReturnType<typeof resolveModelWithMeta> {
+    return resolveModelWithMeta(modelRegistry, descriptor, this.config.defaultModel);
   }
 
   private async handleRuntimeStatus(

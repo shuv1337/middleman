@@ -33,7 +33,7 @@ interface MessageListProps {
   onArtifactClick?: (artifact: ArtifactReference) => void
 }
 
-const suggestions = ['Plan a middleman workflow', 'Debug manager state', 'Summarize latest run']
+const suggestions = ['Plan a Shuvlr workflow', 'Debug manager state', 'Summarize latest run']
 const AUTO_SCROLL_THRESHOLD_PX = 100
 
 type ConversationMessageEntry = Extract<ConversationEntry, { type: 'conversation_message' }>

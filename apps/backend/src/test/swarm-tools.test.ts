@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { buildSwarmTools, type SwarmToolHost } from '../swarm/swarm-tools.js'
+import type { ShuvdoClient } from '../swarm/shuvdo-client.js'
 import type { AgentDescriptor, SendMessageReceipt, SpawnAgentInput } from '../swarm/types.js'
 
 function makeManagerDescriptor(): AgentDescriptor {
@@ -41,7 +42,9 @@ function makeWorkerDescriptor(agentId: string): AgentDescriptor {
   }
 }
 
-function makeHost(spawnImpl: (callerAgentId: string, input: SpawnAgentInput) => Promise<AgentDescriptor>): SwarmToolHost {
+function makeHost(
+  spawnImpl: (callerAgentId: string, input: SpawnAgentInput) => Promise<AgentDescriptor>,
+): SwarmToolHost {
   return {
     listAgents(): AgentDescriptor[] {
       return [makeManagerDescriptor()]
@@ -60,6 +63,24 @@ function makeHost(spawnImpl: (callerAgentId: string, input: SpawnAgentInput) => 
         targetContext: { channel: 'web' },
       }
     },
+  }
+}
+
+function makeShuvdoClient(): ShuvdoClient {
+  return {
+    createTask: vi.fn(async () => ({ item: { id: 'task-1' } })),
+    completeTask: vi.fn(async () => ({ item: { id: 'task-1', done: true } })),
+    listTasks: vi.fn(async () => ({ items: [{ id: 'task-1' }] })),
+    createReminder: vi.fn(async () => ({ item: { id: 'rem-1' } })),
+    listDueReminders: vi.fn(async () => ({ reminders: [{ id: 'rem-1' }] })),
+    completeReminder: vi.fn(async () => ({ item: { id: 'rem-1', done: true } })),
+    listProjects: vi.fn(async () => ({ projects: [] })),
+    createProject: vi.fn(async () => ({ project: { id: 'proj-1' } })),
+    showProject: vi.fn(async () => ({ project: { id: 'proj-1' } })),
+    updateProject: vi.fn(async () => ({ project: { id: 'proj-1', status: 'active' } })),
+    createMilestone: vi.fn(async () => ({ milestone: { id: 'ms-1' } })),
+    updateMilestone: vi.fn(async () => ({ milestone: { id: 'ms-1', status: 'done' } })),
+    getAgentQueue: vi.fn(async () => ({ tasks: [], reminders: [] })),
   }
 }
 
@@ -120,7 +141,9 @@ describe('buildSwarmTools', () => {
   })
 
   it('forwards speak_to_user target metadata and returns resolved target context', async () => {
-    let receivedTarget: { channel: 'web' | 'slack' | 'telegram'; channelId?: string; userId?: string; threadTs?: string } | undefined
+    let receivedTarget:
+      | { channel: 'web' | 'slack' | 'telegram'; channelId?: string; userId?: string; threadTs?: string }
+      | undefined
 
     const host: SwarmToolHost = {
       listAgents: () => [makeManagerDescriptor()],
@@ -175,6 +198,86 @@ describe('buildSwarmTools', () => {
         channelId: 'C12345',
         threadTs: '173.456',
       },
+    })
+  })
+
+  it('only exposes shuvdo tools to manager runtimes when client is configured', () => {
+    const host = makeHost(async () => makeWorkerDescriptor('worker'))
+    const shuvdoClient = makeShuvdoClient()
+
+    const managerTools = buildSwarmTools(host, makeManagerDescriptor(), { shuvdoClient })
+    const workerTools = buildSwarmTools(host, makeWorkerDescriptor('worker-x'), { shuvdoClient })
+    const managerToolNames = managerTools.map((tool) => tool.name)
+    const workerToolNames = workerTools.map((tool) => tool.name)
+
+    expect(managerToolNames).toContain('create_task')
+    expect(managerToolNames).toContain('complete_reminder')
+    expect(managerToolNames).toContain('get_agent_queue')
+    expect(workerToolNames).not.toContain('create_task')
+  })
+
+  it('maps shuvdo tool parameters to expected client endpoints', async () => {
+    const host = makeHost(async () => makeWorkerDescriptor('worker'))
+    const shuvdoClient = makeShuvdoClient()
+
+    const tools = buildSwarmTools(host, makeManagerDescriptor(), { shuvdoClient })
+
+    const createTask = tools.find((tool) => tool.name === 'create_task')
+    const completeReminder = tools.find((tool) => tool.name === 'complete_reminder')
+    const getQueue = tools.find((tool) => tool.name === 'get_agent_queue')
+
+    expect(createTask).toBeDefined()
+    expect(completeReminder).toBeDefined()
+    expect(getQueue).toBeDefined()
+
+    await createTask!.execute(
+      'tool-call',
+      {
+        listName: 'work',
+        payload: { text: 'Write tests' },
+      },
+      undefined,
+      undefined,
+      undefined as any,
+    )
+
+    await completeReminder!.execute(
+      'tool-call',
+      {
+        reminderId: 'rem-1',
+        idempotencyKey: 'key-1',
+      },
+      undefined,
+      undefined,
+      undefined as any,
+    )
+
+    await getQueue!.execute(
+      'tool-call',
+      {
+        agentId: 'manager',
+        limit: 25,
+      },
+      undefined,
+      undefined,
+      undefined as any,
+    )
+
+    expect(shuvdoClient.createTask).toHaveBeenCalledWith({
+      managerId: 'manager',
+      listName: 'work',
+      body: { text: 'Write tests' },
+    })
+    expect(shuvdoClient.completeReminder).toHaveBeenCalledWith({
+      managerId: 'manager',
+      reminderId: 'rem-1',
+      idempotencyKey: 'key-1',
+      body: undefined,
+    })
+    expect(shuvdoClient.getAgentQueue).toHaveBeenCalledWith({
+      managerId: 'manager',
+      agentId: 'manager',
+      limit: 25,
     })
   })
 })

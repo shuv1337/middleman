@@ -54,6 +54,16 @@ export function resolveModelDescriptorFromPreset(preset: SwarmModelPreset): Agen
   };
 }
 
+export function listSwarmModelPresetDescriptors(): Array<{
+  preset: SwarmModelPreset;
+  descriptor: AgentModelDescriptor;
+}> {
+  return SWARM_MODEL_PRESETS.map((preset) => ({
+    preset,
+    descriptor: resolveModelDescriptorFromPreset(preset)
+  }));
+}
+
 export function inferSwarmModelPresetFromDescriptor(
   descriptor: Pick<AgentModelDescriptor, "provider" | "modelId"> | undefined
 ): SwarmModelPreset | undefined {

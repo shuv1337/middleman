@@ -10,8 +10,14 @@ const MANAGED_ENV_KEYS = [
   'SWARM_AUTH_FILE',
   'SWARM_HOST',
   'SWARM_PORT',
-  'MIDDLEMAN_HOST',
-  'MIDDLEMAN_PORT',
+  'SHUVLR_HOST',
+  'SHUVLR_PORT',
+  'SHUVLR_DATA_DIR',
+  'SHUVLR_AUTH_TOKEN',
+  'SHUVLR_ALLOWED_ORIGINS',
+  'SHUVLR_DEFAULT_MODEL_PRESET',
+  'SHUVLR_CODEX_SANDBOX_MODE',
+  'SHUVLR_CODEX_APPROVAL_POLICY',
   'SWARM_DEBUG',
   'SWARM_ALLOW_NON_MANAGER_SUBSCRIPTIONS',
   'SWARM_MANAGER_ID',
@@ -22,7 +28,10 @@ const MANAGED_ENV_KEYS = [
   'SWARM_CWD_ALLOWLIST_ROOTS',
 ] as const
 
-async function withEnv(overrides: Partial<Record<(typeof MANAGED_ENV_KEYS)[number], string>>, run: () => Promise<void> | void) {
+async function withEnv(
+  overrides: Partial<Record<(typeof MANAGED_ENV_KEYS)[number], string>>,
+  run: () => Promise<void> | void,
+) {
   const previous = new Map<string, string | undefined>()
 
   for (const key of MANAGED_ENV_KEYS) {
@@ -66,20 +75,23 @@ describe('createConfig', () => {
         modelId: 'gpt-5.3-codex',
         thinkingLevel: 'xhigh',
       })
+      expect(config.defaultModelPreset).toBe('pi-codex')
+      expect(config.codexSandboxMode).toBe('danger-full-access')
+      expect(config.codexApprovalPolicy).toBe('auto_accept')
 
-      expect(config.paths.dataDir).toBe(resolve(homedir(), '.middleman'))
-      expect(config.paths.swarmDir).toBe(resolve(homedir(), '.middleman', 'swarm'))
-      expect(config.paths.sessionsDir).toBe(resolve(homedir(), '.middleman', 'sessions'))
-      expect(config.paths.uploadsDir).toBe(resolve(homedir(), '.middleman', 'uploads'))
-      expect(config.paths.authDir).toBe(resolve(homedir(), '.middleman', 'auth'))
-      expect(config.paths.authFile).toBe(resolve(homedir(), '.middleman', 'auth', 'auth.json'))
-      expect(config.paths.managerAgentDir).toBe(resolve(homedir(), '.middleman', 'agent', 'manager'))
+      expect(config.paths.dataDir).toBe(resolve(homedir(), '.shuvlr'))
+      expect(config.paths.swarmDir).toBe(resolve(homedir(), '.shuvlr', 'swarm'))
+      expect(config.paths.sessionsDir).toBe(resolve(homedir(), '.shuvlr', 'sessions'))
+      expect(config.paths.uploadsDir).toBe(resolve(homedir(), '.shuvlr', 'uploads'))
+      expect(config.paths.authDir).toBe(resolve(homedir(), '.shuvlr', 'auth'))
+      expect(config.paths.authFile).toBe(resolve(homedir(), '.shuvlr', 'auth', 'auth.json'))
+      expect(config.paths.managerAgentDir).toBe(resolve(homedir(), '.shuvlr', 'agent', 'manager'))
       expect(config.paths.repoArchetypesDir).toBe(resolve(config.paths.rootDir, '.swarm', 'archetypes'))
-      expect(config.paths.memoryDir).toBe(resolve(homedir(), '.middleman', 'memory'))
+      expect(config.paths.memoryDir).toBe(resolve(homedir(), '.shuvlr', 'memory'))
       expect(config.paths.memoryFile).toBeUndefined()
       expect(config.paths.repoMemorySkillFile).toBe(resolve(config.paths.rootDir, '.swarm', 'skills', 'memory', 'SKILL.md'))
-      expect(config.paths.agentsStoreFile).toBe(resolve(homedir(), '.middleman', 'swarm', 'agents.json'))
-      expect(config.paths.secretsFile).toBe(resolve(homedir(), '.middleman', 'secrets.json'))
+      expect(config.paths.agentsStoreFile).toBe(resolve(homedir(), '.shuvlr', 'swarm', 'agents.json'))
+      expect(config.paths.secretsFile).toBe(resolve(homedir(), '.shuvlr', 'secrets.json'))
       expect(config.paths.schedulesFile).toBeUndefined()
 
       expect(config.defaultCwd).toBe(config.paths.rootDir)
@@ -88,11 +100,52 @@ describe('createConfig', () => {
     })
   })
 
-  it('respects MIDDLEMAN_HOST and MIDDLEMAN_PORT', async () => {
-    await withEnv({ MIDDLEMAN_HOST: '0.0.0.0', MIDDLEMAN_PORT: '9999' }, () => {
+  it('respects SHUVLR host/port/auth/cors settings', async () => {
+    await withEnv(
+      {
+        SHUVLR_HOST: '0.0.0.0',
+        SHUVLR_PORT: '9999',
+        SHUVLR_AUTH_TOKEN: 'secret-token',
+        SHUVLR_ALLOWED_ORIGINS: 'https://app.shuvlr.dev, http://localhost:47188',
+        SHUVLR_DEFAULT_MODEL_PRESET: 'pi-opus',
+        SHUVLR_CODEX_SANDBOX_MODE: 'workspace-write',
+        SHUVLR_CODEX_APPROVAL_POLICY: 'deny_file_changes',
+      },
+      () => {
+        const config = createConfig()
+        expect(config.host).toBe('0.0.0.0')
+        expect(config.port).toBe(9999)
+        expect(config.authToken).toBe('secret-token')
+        expect(config.allowedOrigins).toEqual(['https://app.shuvlr.dev', 'http://localhost:47188'])
+        expect(config.defaultModelPreset).toBe('pi-opus')
+        expect(config.defaultModel).toEqual({
+          provider: 'anthropic',
+          modelId: 'claude-opus-4-6',
+          thinkingLevel: 'xhigh',
+        })
+        expect(config.codexSandboxMode).toBe('workspace-write')
+        expect(config.codexApprovalPolicy).toBe('deny_file_changes')
+      },
+    )
+  })
+
+  it('supports SHUVLR_DATA_DIR override and validates malformed input', async () => {
+    await withEnv({ SHUVLR_DATA_DIR: '/tmp/custom-shuvlr-data' }, () => {
       const config = createConfig()
-      expect(config.host).toBe('0.0.0.0')
-      expect(config.port).toBe(9999)
+      expect(config.paths.dataDir).toBe('/tmp/custom-shuvlr-data')
+      expect(config.paths.authFile).toBe('/tmp/custom-shuvlr-data/auth/auth.json')
+    })
+
+    await withEnv({ SHUVLR_PORT: 'nope' }, () => {
+      expect(() => createConfig()).toThrow('SHUVLR_PORT must be a positive integer')
+    })
+
+    await withEnv({ SHUVLR_CODEX_SANDBOX_MODE: 'invalid' }, () => {
+      expect(() => createConfig()).toThrow('SHUVLR_CODEX_SANDBOX_MODE must be one of')
+    })
+
+    await withEnv({ SHUVLR_CODEX_APPROVAL_POLICY: 'invalid' }, () => {
+      expect(() => createConfig()).toThrow('SHUVLR_CODEX_APPROVAL_POLICY must be one of')
     })
   })
 
@@ -115,8 +168,8 @@ describe('createConfig', () => {
       () => {
         const config = createConfig()
 
-        expect(config.paths.dataDir).toBe(resolve(homedir(), '.middleman'))
-        expect(config.paths.authFile).toBe(resolve(homedir(), '.middleman', 'auth', 'auth.json'))
+        expect(config.paths.dataDir).toBe(resolve(homedir(), '.shuvlr'))
+        expect(config.paths.authFile).toBe(resolve(homedir(), '.shuvlr', 'auth', 'auth.json'))
         expect(config.debug).toBe(true)
         expect(config.allowNonManagerSubscriptions).toBe(true)
         expect(config.managerId).toBeUndefined()
@@ -127,7 +180,7 @@ describe('createConfig', () => {
           thinkingLevel: 'xhigh',
         })
         expect(config.cwdAllowlistRoots).not.toContain('/tmp/swarm-allowlist')
-      }
+      },
     )
   })
 })

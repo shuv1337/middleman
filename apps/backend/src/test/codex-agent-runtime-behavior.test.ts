@@ -248,6 +248,114 @@ describe('CodexAgentRuntime behavior', () => {
     }
   })
 
+  it('applies sandbox mode and approval policy decision matrix to codex app-server requests', async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), 'swarm-codex-runtime-'))
+    const descriptor = makeDescriptor(tempDir)
+    await mkdir(dirname(descriptor.sessionFile), { recursive: true })
+
+    const observedThreadStartParams: unknown[] = []
+
+    rpcMockState.requestImpl.mockImplementation(async (_client: any, method: string, params: unknown) => {
+      if (method === 'initialize') {
+        return {}
+      }
+
+      if (method === 'account/read') {
+        return { requiresOpenaiAuth: false, account: { id: 'acct-1' } }
+      }
+
+      if (method === 'thread/start') {
+        observedThreadStartParams.push(params)
+        return { thread: { id: 'thread-1' } }
+      }
+
+      return {}
+    })
+
+    const runtime = await CodexAgentRuntime.create({
+      descriptor,
+      callbacks: {
+        onStatusChange: async () => {},
+      },
+      systemPrompt: 'You are a test codex runtime.',
+      tools: [],
+      sandboxMode: 'read-only',
+      approvalPolicy: 'deny_file_changes',
+    })
+
+    const instance = rpcMockState.instances[0]
+    expect(observedThreadStartParams[0]).toMatchObject({
+      sandbox: 'read-only',
+      config: {
+        sandbox_mode: 'read-only',
+      },
+      approvalPolicy: 'on-request',
+    })
+
+    const approveCommandDefault = await instance.options.onRequest?.({
+      method: 'item/commandExecution/requestApproval',
+      params: {},
+    })
+    const approveFileChangeDenied = await instance.options.onRequest?.({
+      method: 'item/fileChange/requestApproval',
+      params: {},
+    })
+
+    expect(approveCommandDefault).toEqual({ decision: 'accept' })
+    expect(approveFileChangeDenied).toEqual({ decision: 'deny' })
+
+    await runtime.terminate({ abort: false })
+
+    // Verify each policy branch quickly.
+    for (const policy of ['auto_accept', 'deny_all', 'deny_command_execution', 'deny_file_changes'] as const) {
+      rpcMockState.instances.length = 0
+      rpcMockState.requestImpl.mockReset()
+      rpcMockState.requestImpl.mockImplementation(async (_client: any, method: string) => {
+        if (method === 'initialize') return {}
+        if (method === 'account/read') return { requiresOpenaiAuth: false, account: { id: 'acct-1' } }
+        if (method === 'thread/resume') return { thread: { id: 'thread-1' } }
+        if (method === 'thread/start') return { thread: { id: 'thread-1' } }
+        return {}
+      })
+
+      const loopRuntime = await CodexAgentRuntime.create({
+        descriptor: makeDescriptor(tempDir),
+        callbacks: {
+          onStatusChange: async () => {},
+        },
+        systemPrompt: 'You are a policy test runtime.',
+        tools: [],
+        approvalPolicy: policy,
+      })
+
+      const loopInstance = rpcMockState.instances[0]
+      const commandDecision = await loopInstance.options.onRequest?.({
+        method: 'item/commandExecution/requestApproval',
+        params: {},
+      })
+      const fileDecision = await loopInstance.options.onRequest?.({
+        method: 'item/fileChange/requestApproval',
+        params: {},
+      })
+
+      if (policy === 'auto_accept') {
+        expect(commandDecision).toEqual({ decision: 'accept' })
+        expect(fileDecision).toEqual({ decision: 'accept' })
+      } else if (policy === 'deny_all') {
+        expect(commandDecision).toEqual({ decision: 'deny' })
+        expect(fileDecision).toEqual({ decision: 'deny' })
+      } else if (policy === 'deny_command_execution') {
+        expect(commandDecision).toEqual({ decision: 'deny' })
+        expect(fileDecision).toEqual({ decision: 'accept' })
+      } else {
+        expect(commandDecision).toEqual({ decision: 'accept' })
+        expect(fileDecision).toEqual({ decision: 'deny' })
+      }
+
+      await loopRuntime.terminate({ abort: false })
+    }
+  })
+
   it('queues steer while turn/start is pending and flushes steers in order once start resolves', async () => {
     const tempDir = await mkdtemp(join(tmpdir(), 'swarm-codex-runtime-'))
     const descriptor = makeDescriptor(tempDir)

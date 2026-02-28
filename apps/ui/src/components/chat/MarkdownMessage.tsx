@@ -298,11 +298,13 @@ export const MarkdownMessage = memo(function MarkdownMessage({
                         language ? 'rounded-b-lg' : 'rounded-lg',
                       )}
                     >
-                      <pre className="overflow-x-auto p-4">
-                        <code className={cn('font-mono text-foreground/90', isDocument ? 'text-[13px] leading-6' : 'text-xs leading-5')}>
-                          {normalizedCode}
-                        </code>
-                      </pre>
+                      <ScrollArea className="w-full">
+                        <pre className="p-4">
+                          <code className={cn('font-mono text-foreground/90', isDocument ? 'text-[13px] leading-6' : 'text-xs leading-5')}>
+                            {normalizedCode}
+                          </code>
+                        </pre>
+                      </ScrollArea>
                     </div>
                   </div>
                 )

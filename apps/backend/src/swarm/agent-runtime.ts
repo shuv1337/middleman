@@ -17,6 +17,13 @@ import type {
   RequestedDeliveryMode,
   SendMessageReceipt
 } from "./types.js";
+import {
+  buildMessageKey,
+  normalizeRuntimeError,
+  normalizeRuntimeImageAttachments,
+  normalizeRuntimeUserMessage,
+  previewForLog
+} from "./runtime-utils.js";
 
 interface PendingDelivery {
   deliveryId: string;
@@ -432,22 +439,6 @@ export class AgentRuntime implements SwarmAgentRuntime {
   }
 }
 
-function normalizeRuntimeUserMessage(input: RuntimeUserMessageInput): RuntimeUserMessage {
-  if (typeof input === "string") {
-    return {
-      text: input,
-      images: []
-    };
-  }
-
-  const text = typeof input.text === "string" ? input.text : "";
-
-  return {
-    text,
-    images: normalizeRuntimeImageAttachments(input.images)
-  };
-}
-
 function normalizeAgentContextUsage(
   usage:
     | {
@@ -480,36 +471,6 @@ function normalizeAgentContextUsage(
     contextWindow,
     percent
   };
-}
-
-function normalizeRuntimeImageAttachments(
-  images: RuntimeUserMessage["images"]
-): RuntimeImageAttachment[] {
-  if (!images || images.length === 0) {
-    return [];
-  }
-
-  const normalized: RuntimeImageAttachment[] = [];
-
-  for (const image of images) {
-    if (!image || typeof image !== "object") {
-      continue;
-    }
-
-    const mimeType = typeof image.mimeType === "string" ? image.mimeType.trim() : "";
-    const data = typeof image.data === "string" ? image.data.trim() : "";
-
-    if (!mimeType || !mimeType.startsWith("image/") || !data) {
-      continue;
-    }
-
-    normalized.push({
-      mimeType,
-      data
-    });
-  }
-
-  return normalized;
 }
 
 function toImageContent(images: RuntimeImageAttachment[] | undefined): ImageContent[] {
@@ -580,40 +541,7 @@ function extractMessageKeyFromContent(content: unknown): string | undefined {
   return buildMessageKey(textParts.join("\n"), images);
 }
 
-function previewForLog(text: string, maxLength = 160): string {
-  const normalized = text.replace(/\s+/g, " ").trim();
-  if (normalized.length <= maxLength) return normalized;
-  return `${normalized.slice(0, maxLength)}...`;
-}
-
-function normalizeRuntimeError(error: unknown): { message: string; stack?: string } {
-  if (error instanceof Error) {
-    return {
-      message: error.message,
-      stack: error.stack
-    };
-  }
-
-  return {
-    message: String(error)
-  };
-}
-
 function isLikelyCompactionError(message: string): boolean {
   return /\bcompact(?:ion)?\b/i.test(message);
 }
 
-function buildMessageKey(text: string, images: RuntimeImageAttachment[]): string | undefined {
-  const normalizedText = text.trim();
-  const normalizedImages = normalizeRuntimeImageAttachments(images);
-
-  if (!normalizedText && normalizedImages.length === 0) {
-    return undefined;
-  }
-
-  const imageKey = normalizedImages
-    .map((image) => `${image.mimeType}:${image.data.length}:${image.data.slice(0, 24)}`)
-    .join(",");
-
-  return `text=${normalizedText}|images=${imageKey}`;
-}

@@ -264,7 +264,7 @@ describe('SwarmManager', () => {
     await manager.boot()
 
     const memory = await readFile(config.paths.memoryFile!, 'utf8')
-    expect(memory).toContain('# Swarm Memory')
+    expect(memory).toContain('# Shuvlr Memory')
     expect(memory).toContain('## User Preferences')
   })
 
@@ -298,7 +298,7 @@ describe('SwarmManager', () => {
     await manager.boot()
 
     const managerMemory = await readFile(config.paths.memoryFile!, 'utf8')
-    expect(managerMemory).toContain('# Swarm Memory')
+    expect(managerMemory).toContain('# Shuvlr Memory')
     expect(managerMemory).not.toBe(legacyContent)
 
     await expect(readFile(join(config.paths.memoryDir, '.migrated'), 'utf8')).rejects.toMatchObject({
@@ -380,18 +380,18 @@ describe('SwarmManager', () => {
     expect(workerPrompt).toContain('Follow the memory skill workflow before editing the memory file')
   })
 
-  it('auto-loads per-runtime memory context and wires built-in memory + brave-search + cron-scheduling + agent-browser + image-generation + gsuite skills', async () => {
+  it('auto-loads per-runtime memory context and wires built-in memory + brave-search + cron-scheduling + agent-browser + image-generation + gsuite + shuvdo skills', async () => {
     const config = await makeTempConfig()
     const manager = new TestSwarmManager(config)
     await manager.boot()
 
-    const persistedMemory = '# Swarm Memory\n\n## Project Facts\n- release train: friday\n'
+    const persistedMemory = '# Shuvlr Memory\n\n## Project Facts\n- release train: friday\n'
     await writeFile(config.paths.memoryFile!, persistedMemory, 'utf8')
 
     const resources = await manager.getMemoryRuntimeResourcesForTest()
     expect(resources.memoryContextFile.path).toBe(config.paths.memoryFile!)
     expect(resources.memoryContextFile.content).toBe(persistedMemory)
-    expect(resources.additionalSkillPaths).toHaveLength(6)
+    expect(resources.additionalSkillPaths).toHaveLength(7)
 
     const memorySkill = await readFile(resources.additionalSkillPaths[0], 'utf8')
     expect(memorySkill).toContain('name: memory')
@@ -416,6 +416,11 @@ describe('SwarmManager', () => {
     const gsuiteSkill = await readFile(resources.additionalSkillPaths[5], 'utf8')
     expect(gsuiteSkill).toContain('name: gsuite')
     expect(gsuiteSkill).toContain('gog')
+
+    const shuvdoSkill = await readFile(resources.additionalSkillPaths[6], 'utf8')
+    expect(shuvdoSkill).toContain('name: shuvdo')
+    expect(shuvdoSkill).toContain('SHUVDO_API')
+    expect(shuvdoSkill).toContain('SHUVDO_TOKEN')
   })
 
   it('loads skill env requirements and persists secrets to the settings store', async () => {
@@ -434,6 +439,12 @@ describe('SwarmManager', () => {
       const geminiRequirement = initial.find(
         (requirement) => requirement.name === 'GEMINI_API_KEY' && requirement.skillName === 'image-generation',
       )
+      const shuvdoApiRequirement = initial.find(
+        (requirement) => requirement.name === 'SHUVDO_API' && requirement.skillName === 'shuvdo',
+      )
+      const shuvdoTokenRequirement = initial.find(
+        (requirement) => requirement.name === 'SHUVDO_TOKEN' && requirement.skillName === 'shuvdo',
+      )
 
       expect(braveRequirement).toMatchObject({
         description: 'Brave Search API key',
@@ -443,6 +454,14 @@ describe('SwarmManager', () => {
       })
       expect(geminiRequirement).toMatchObject({
         description: 'Google AI Studio / Gemini API key',
+        required: true,
+        isSet: false,
+      })
+      expect(shuvdoApiRequirement).toMatchObject({
+        required: true,
+        isSet: false,
+      })
+      expect(shuvdoTokenRequirement).toMatchObject({
         required: true,
         isSet: false,
       })
@@ -520,13 +539,14 @@ describe('SwarmManager', () => {
     await manager.boot()
 
     const resources = await manager.getMemoryRuntimeResourcesForTest()
-    expect(resources.additionalSkillPaths).toHaveLength(6)
+    expect(resources.additionalSkillPaths).toHaveLength(7)
     expect(resources.additionalSkillPaths[0]).toBe(config.paths.repoMemorySkillFile)
     expect(resources.additionalSkillPaths[1].endsWith(join('brave-search', 'SKILL.md'))).toBe(true)
     expect(resources.additionalSkillPaths[2].endsWith(join('cron-scheduling', 'SKILL.md'))).toBe(true)
     expect(resources.additionalSkillPaths[3].endsWith(join('agent-browser', 'SKILL.md'))).toBe(true)
     expect(resources.additionalSkillPaths[4].endsWith(join('image-generation', 'SKILL.md'))).toBe(true)
     expect(resources.additionalSkillPaths[5].endsWith(join('gsuite', 'SKILL.md'))).toBe(true)
+    expect(resources.additionalSkillPaths[6].endsWith(join('shuvdo', 'SKILL.md'))).toBe(true)
   })
 
   it('prefers repo brave-search skill override when present', async () => {
@@ -552,13 +572,14 @@ describe('SwarmManager', () => {
     await manager.boot()
 
     const resources = await manager.getMemoryRuntimeResourcesForTest()
-    expect(resources.additionalSkillPaths).toHaveLength(6)
+    expect(resources.additionalSkillPaths).toHaveLength(7)
     expect(resources.additionalSkillPaths[0].endsWith(join('memory', 'SKILL.md'))).toBe(true)
     expect(resources.additionalSkillPaths[1]).toBe(repoBraveSkillFile)
     expect(resources.additionalSkillPaths[2].endsWith(join('cron-scheduling', 'SKILL.md'))).toBe(true)
     expect(resources.additionalSkillPaths[3].endsWith(join('agent-browser', 'SKILL.md'))).toBe(true)
     expect(resources.additionalSkillPaths[4].endsWith(join('image-generation', 'SKILL.md'))).toBe(true)
     expect(resources.additionalSkillPaths[5].endsWith(join('gsuite', 'SKILL.md'))).toBe(true)
+    expect(resources.additionalSkillPaths[6].endsWith(join('shuvdo', 'SKILL.md'))).toBe(true)
   })
 
   it('uses repo manager archetype overrides on boot', async () => {

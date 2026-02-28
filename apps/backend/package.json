@@ -1,5 +1,5 @@
 {
-  "name": "@middleman/backend",
+  "name": "@shuvlr/backend",
   "private": true,
   "license": "Apache-2.0",
   "type": "module",

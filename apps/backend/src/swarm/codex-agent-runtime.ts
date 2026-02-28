@@ -20,23 +20,31 @@ import type {
   AgentDescriptor,
   AgentStatus,
   RequestedDeliveryMode,
-  SendMessageReceipt
+  SendMessageReceipt,
+  SwarmCodexApprovalPolicy,
+  SwarmCodexSandboxMode
 } from "./types.js";
+import {
+  buildMessageKey,
+  normalizeRuntimeError,
+  normalizeRuntimeImageAttachments,
+  normalizeRuntimeUserMessage,
+  previewForLog
+} from "./runtime-utils.js";
 
 const CODEX_RUNTIME_STATE_ENTRY_TYPE = "swarm_codex_runtime_state";
-const CODEX_SANDBOX_MODE = "danger-full-access";
 
 interface CodexRuntimeState {
   threadId: string;
 }
 
 interface CodexSandboxSettings {
-  sandboxMode: typeof CODEX_SANDBOX_MODE;
+  sandboxMode: SwarmCodexSandboxMode;
   threadConfig: {
-    sandbox_mode: typeof CODEX_SANDBOX_MODE;
+    sandbox_mode: SwarmCodexSandboxMode;
   };
   turnSandboxPolicy: {
-    type: "dangerFullAccess";
+    type: "dangerFullAccess" | "workspaceWrite" | "readOnly";
   };
 }
 
@@ -59,6 +67,7 @@ export class CodexAgentRuntime implements SwarmAgentRuntime {
   private readonly sessionManager: SessionManager;
   private readonly toolBridge: CodexToolBridge;
   private readonly sandboxSettings: CodexSandboxSettings;
+  private readonly approvalPolicy: SwarmCodexApprovalPolicy;
 
   private readonly rpc: CodexJsonRpcClient;
 
@@ -78,6 +87,8 @@ export class CodexAgentRuntime implements SwarmAgentRuntime {
     systemPrompt: string;
     tools: ToolDefinition[];
     runtimeEnv?: Record<string, string | undefined>;
+    sandboxMode?: SwarmCodexSandboxMode;
+    approvalPolicy?: SwarmCodexApprovalPolicy;
   }) {
     this.descriptor = options.descriptor;
     this.callbacks = options.callbacks;
@@ -87,7 +98,8 @@ export class CodexAgentRuntime implements SwarmAgentRuntime {
 
     this.sessionManager = SessionManager.open(options.descriptor.sessionFile);
     this.toolBridge = createCodexToolBridge(options.tools);
-    this.sandboxSettings = buildCodexSandboxSettings();
+    this.sandboxSettings = buildCodexSandboxSettings(options.sandboxMode ?? "danger-full-access");
+    this.approvalPolicy = options.approvalPolicy ?? "auto_accept";
 
     const command = process.env.CODEX_BIN?.trim() || "codex";
     const runtimeEnv: NodeJS.ProcessEnv = {
@@ -131,6 +143,8 @@ export class CodexAgentRuntime implements SwarmAgentRuntime {
     systemPrompt: string;
     tools: ToolDefinition[];
     runtimeEnv?: Record<string, string | undefined>;
+    sandboxMode?: SwarmCodexSandboxMode;
+    approvalPolicy?: SwarmCodexApprovalPolicy;
   }): Promise<CodexAgentRuntime> {
     const runtime = new CodexAgentRuntime(options);
 
@@ -348,7 +362,7 @@ export class CodexAgentRuntime implements SwarmAgentRuntime {
         const resumed = await this.rpc.request<{ thread?: { id?: unknown } }>("thread/resume", {
           threadId: persisted.threadId,
           cwd: this.descriptor.cwd,
-          approvalPolicy: "never",
+          approvalPolicy: resolveThreadApprovalPolicy(this.approvalPolicy),
           sandbox: this.sandboxSettings.sandboxMode,
           config: this.sandboxSettings.threadConfig,
           developerInstructions: this.systemPrompt
@@ -370,7 +384,7 @@ export class CodexAgentRuntime implements SwarmAgentRuntime {
 
     const started = await this.rpc.request<{ thread?: { id?: unknown } }>("thread/start", {
       cwd: this.descriptor.cwd,
-      approvalPolicy: "never",
+      approvalPolicy: resolveThreadApprovalPolicy(this.approvalPolicy),
       sandbox: this.sandboxSettings.sandboxMode,
       config: this.sandboxSettings.threadConfig,
       developerInstructions: this.systemPrompt,
@@ -688,15 +702,17 @@ export class CodexAgentRuntime implements SwarmAgentRuntime {
         return response;
       }
 
-      case "item/commandExecution/requestApproval":
-        return {
-          decision: "accept"
-        };
+      case "item/commandExecution/requestApproval": {
+        const decision = resolveApprovalDecision(this.approvalPolicy, request.method);
+        this.logApprovalDecision(request.method, decision);
+        return { decision };
+      }
 
-      case "item/fileChange/requestApproval":
-        return {
-          decision: "accept"
-        };
+      case "item/fileChange/requestApproval": {
+        const decision = resolveApprovalDecision(this.approvalPolicy, request.method);
+        this.logApprovalDecision(request.method, decision);
+        return { decision };
+      }
 
       case "item/tool/requestUserInput": {
         const questions =
@@ -858,6 +874,19 @@ export class CodexAgentRuntime implements SwarmAgentRuntime {
     }
   }
 
+  private logApprovalDecision(
+    requestMethod: "item/commandExecution/requestApproval" | "item/fileChange/requestApproval",
+    decision: "accept" | "deny"
+  ): void {
+    console.info(`[swarm][${this.now()}] codex:approval_decision`, {
+      runtime: "codex-app-server",
+      agentId: this.descriptor.agentId,
+      policy: this.approvalPolicy,
+      requestMethod,
+      decision
+    });
+  }
+
   private logRuntimeError(
     phase: RuntimeErrorEvent["phase"],
     error: unknown,
@@ -875,18 +904,30 @@ export class CodexAgentRuntime implements SwarmAgentRuntime {
   }
 }
 
-// Codex app-server defaults new threads to read-only sandboxing.
-// We use danger-full-access so agents have unrestricted filesystem access.
-function buildCodexSandboxSettings(): CodexSandboxSettings {
+function buildCodexSandboxSettings(mode: SwarmCodexSandboxMode): CodexSandboxSettings {
   return {
-    sandboxMode: CODEX_SANDBOX_MODE,
+    sandboxMode: mode,
     threadConfig: {
-      sandbox_mode: CODEX_SANDBOX_MODE,
+      sandbox_mode: mode
     },
     turnSandboxPolicy: {
-      type: "dangerFullAccess",
+      type: mapSandboxModeToTurnPolicy(mode)
     }
   };
+}
+
+function mapSandboxModeToTurnPolicy(
+  mode: SwarmCodexSandboxMode
+): CodexSandboxSettings["turnSandboxPolicy"]["type"] {
+  switch (mode) {
+    case "workspace-write":
+      return "workspaceWrite";
+    case "read-only":
+      return "readOnly";
+    case "danger-full-access":
+    default:
+      return "dangerFullAccess";
+  }
 }
 
 function normalizeCodexStartupError(error: unknown): Error {
@@ -906,6 +947,27 @@ function isSpawnEnoentError(error: unknown): boolean {
     "code" in error &&
     (error as { code?: string }).code === "ENOENT"
   );
+}
+
+function resolveThreadApprovalPolicy(policy: SwarmCodexApprovalPolicy): "never" | "on-request" {
+  return policy === "auto_accept" ? "never" : "on-request";
+}
+
+function resolveApprovalDecision(
+  policy: SwarmCodexApprovalPolicy,
+  method: "item/commandExecution/requestApproval" | "item/fileChange/requestApproval"
+): "accept" | "deny" {
+  switch (policy) {
+    case "deny_all":
+      return "deny";
+    case "deny_command_execution":
+      return method === "item/commandExecution/requestApproval" ? "deny" : "accept";
+    case "deny_file_changes":
+      return method === "item/fileChange/requestApproval" ? "deny" : "accept";
+    case "auto_accept":
+    default:
+      return "accept";
+  }
 }
 
 function parseThreadId(value: unknown): string | undefined {
@@ -1095,50 +1157,6 @@ function toRuntimeMessageFromUserItem(content: unknown[] | undefined): unknown {
   return parts;
 }
 
-function normalizeRuntimeUserMessage(input: RuntimeUserMessageInput): RuntimeUserMessage {
-  if (typeof input === "string") {
-    return {
-      text: input,
-      images: []
-    };
-  }
-
-  return {
-    text: typeof input.text === "string" ? input.text : "",
-    images: normalizeRuntimeImageAttachments(input.images)
-  };
-}
-
-function normalizeRuntimeImageAttachments(
-  images: RuntimeUserMessage["images"]
-): RuntimeImageAttachment[] {
-  if (!images || images.length === 0) {
-    return [];
-  }
-
-  const normalized: RuntimeImageAttachment[] = [];
-
-  for (const image of images) {
-    if (!image || typeof image !== "object") {
-      continue;
-    }
-
-    const mimeType = typeof image.mimeType === "string" ? image.mimeType.trim() : "";
-    const data = typeof image.data === "string" ? image.data.trim() : "";
-
-    if (!mimeType.startsWith("image/") || !data) {
-      continue;
-    }
-
-    normalized.push({
-      mimeType,
-      data
-    });
-  }
-
-  return normalized;
-}
-
 function toDataUrl(image: RuntimeImageAttachment): string {
   return `data:${image.mimeType};base64,${image.data}`;
 }
@@ -1203,36 +1221,3 @@ function extractMessageKeyFromRuntimeContent(content: unknown): string | undefin
   return buildMessageKey(textParts.join("\n"), images);
 }
 
-function buildMessageKey(text: string, images: RuntimeImageAttachment[]): string | undefined {
-  const normalizedText = text.trim();
-  const normalizedImages = normalizeRuntimeImageAttachments(images);
-
-  if (!normalizedText && normalizedImages.length === 0) {
-    return undefined;
-  }
-
-  const imageKey = normalizedImages
-    .map((image) => `${image.mimeType}:${image.data.length}:${image.data.slice(0, 24)}`)
-    .join(",");
-
-  return `text=${normalizedText}|images=${imageKey}`;
-}
-
-function normalizeRuntimeError(error: unknown): { message: string; stack?: string } {
-  if (error instanceof Error) {
-    return {
-      message: error.message,
-      stack: error.stack
-    };
-  }
-
-  return {
-    message: String(error)
-  };
-}
-
-function previewForLog(text: string, maxLength = 160): string {
-  const normalized = text.replace(/\s+/g, " ").trim();
-  if (normalized.length <= maxLength) return normalized;
-  return `${normalized.slice(0, maxLength)}...`;
-}

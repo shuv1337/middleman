@@ -1,6 +1,6 @@
-# @middleman/site
+# @shuvlr/site
 
-Marketing landing page for Middleman, built with TanStack Start + Tailwind CSS.
+Marketing landing page for Shuvlr, built with TanStack Start + Tailwind CSS.
 
 ## Scripts
 

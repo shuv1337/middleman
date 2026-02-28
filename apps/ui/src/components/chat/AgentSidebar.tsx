@@ -208,6 +208,7 @@ function AgentRow({
   const preset = inferModelPreset(agent)
   const modelLabel = getModelLabel(agent, preset)
   const modelDescription = `${agent.model.provider}/${agent.model.modelId}`
+  const deleteLabel = agent.role === 'manager' ? `Delete manager ${agent.agentId}` : `Delete ${agent.agentId}`
 
   return (
     <ContextMenu>
@@ -229,6 +230,7 @@ function AgentRow({
           >
             <AgentActivitySlot isActive={isActive} isSelected={isSelected} streamingWorkerCount={streamingWorkerCount} />
             <span className={cn('min-w-0 flex-1 truncate text-sm leading-5', nameClassName)}>{title}</span>
+            {preset ? <span className="sr-only">{preset}</span> : null}
 
             <TooltipProvider delayDuration={200}>
               <Tooltip>
@@ -248,6 +250,9 @@ function AgentRow({
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
+          </button>
+          <button type="button" onClick={onDelete} className="sr-only" aria-label={deleteLabel}>
+            {deleteLabel}
           </button>
         </div>
       </ContextMenuTrigger>
@@ -275,7 +280,9 @@ export function AgentSidebar({
   onOpenSettings,
 }: AgentSidebarProps) {
   const { managerRows, orphanWorkers } = buildManagerTreeRows(agents)
-  const [expandedManagerIds, setExpandedManagerIds] = useState<Set<string>>(() => new Set())
+  const [expandedManagerIds, setExpandedManagerIds] = useState<Set<string>>(
+    () => new Set(managerRows.map(({ manager }) => manager.agentId)),
+  )
 
   const toggleManagerCollapsed = (managerId: string) => {
     setExpandedManagerIds((previous) => {
@@ -511,32 +518,21 @@ export function AgentSidebar({
         {sidebarContent}
       </div>
 
-      {/* Mobile: render as overlay */}
-      <div
-        className={cn(
-          'fixed inset-0 z-40 md:hidden',
-          isMobileOpen ? 'pointer-events-auto' : 'pointer-events-none',
-        )}
-      >
-        {/* Backdrop */}
-        <div
-          className={cn(
-            'absolute inset-0 bg-black/50 transition-opacity duration-200',
-            isMobileOpen ? 'opacity-100' : 'opacity-0',
-          )}
-          onClick={onMobileClose}
-          aria-hidden="true"
-        />
-        {/* Sidebar panel */}
-        <div
-          className={cn(
-            'relative z-10 h-full w-[80vw] max-w-[20rem] transition-transform duration-200 ease-out',
-            isMobileOpen ? 'translate-x-0' : '-translate-x-full',
-          )}
-        >
-          {sidebarContent}
+      {/* Mobile: render as overlay only when open to avoid duplicate interactive trees */}
+      {isMobileOpen ? (
+        <div className="fixed inset-0 z-40 md:hidden">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/50 transition-opacity duration-200"
+            onClick={onMobileClose}
+            aria-hidden="true"
+          />
+          {/* Sidebar panel */}
+          <div className="relative z-10 h-full w-[80vw] max-w-[20rem] translate-x-0 transition-transform duration-200 ease-out">
+            {sidebarContent}
+          </div>
         </div>
-      </div>
+      ) : null}
     </>
   )
 }

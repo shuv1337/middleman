@@ -28,15 +28,17 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build
+      - name: Build (workspace)
         run: pnpm build
 
       - name: Backend typecheck
-        run: pnpm --filter @swarm/backend exec tsc -p tsconfig.build.json --noEmit
+        run: pnpm --filter @shuvlr/backend exec tsc -p tsconfig.build.json --noEmit
 
       - name: UI typecheck
-        run: pnpm --filter @swarm/ui exec tsc --noEmit
+        run: pnpm --filter @shuvlr/ui exec tsc --noEmit
 
-      - name: Backend tests
-        continue-on-error: true
-        run: pnpm --filter @swarm/backend test
+      - name: Backend tests (coverage)
+        run: pnpm --filter @shuvlr/backend test -- --coverage
+
+      - name: UI tests (coverage)
+        run: pnpm --filter @shuvlr/ui test -- --coverage

@@ -1,6 +1,7 @@
 import { Type } from "@sinclair/typebox";
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { parseSwarmModelPreset } from "./model-presets.js";
+import type { ShuvdoClient } from "./shuvdo-client.js";
 import {
   type AgentDescriptor,
   type MessageChannel,
@@ -59,7 +60,13 @@ const speakToUserTargetSchema = Type.Object({
   )
 });
 
-export function buildSwarmTools(host: SwarmToolHost, descriptor: AgentDescriptor): ToolDefinition[] {
+const genericRecordSchema = Type.Record(Type.String(), Type.Any());
+
+export function buildSwarmTools(
+  host: SwarmToolHost,
+  descriptor: AgentDescriptor,
+  options?: { shuvdoClient?: ShuvdoClient }
+): ToolDefinition[] {
   const shared: ToolDefinition[] = [
     {
       name: "list_agents",
@@ -237,5 +244,282 @@ export function buildSwarmTools(host: SwarmToolHost, descriptor: AgentDescriptor
     }
   ];
 
-  return [...shared, ...managerOnly];
+  const shuvdoClient = options?.shuvdoClient;
+  if (!shuvdoClient) {
+    return [...shared, ...managerOnly];
+  }
+
+  const shuvdoTools: ToolDefinition[] = [
+    {
+      name: "create_task",
+      label: "Create Task",
+      description: "Create a Shuvdo task in a list via POST /api/list/:name/add.",
+      parameters: Type.Object({
+        listName: Type.String({ description: "Target list name." }),
+        payload: genericRecordSchema
+      }),
+      async execute(_toolCallId, params) {
+        const parsed = params as { listName: string; payload: Record<string, unknown> };
+        const response = await shuvdoClient.createTask({
+          managerId: descriptor.agentId,
+          listName: parsed.listName,
+          body: parsed.payload
+        });
+        return shuvdoResult("create_task", response);
+      }
+    },
+    {
+      name: "complete_task",
+      label: "Complete Task",
+      description: "Toggle/complete a Shuvdo task via POST /api/list/:name/:id/done.",
+      parameters: Type.Object({
+        listName: Type.String(),
+        itemId: Type.String(),
+        payload: Type.Optional(genericRecordSchema)
+      }),
+      async execute(_toolCallId, params) {
+        const parsed = params as {
+          listName: string;
+          itemId: string;
+          payload?: Record<string, unknown>;
+        };
+        const response = await shuvdoClient.completeTask({
+          managerId: descriptor.agentId,
+          listName: parsed.listName,
+          itemId: parsed.itemId,
+          body: parsed.payload
+        });
+        return shuvdoResult("complete_task", response);
+      }
+    },
+    {
+      name: "list_tasks",
+      label: "List Tasks",
+      description: "List tasks/items in a Shuvdo list.",
+      parameters: Type.Object({
+        listName: Type.String()
+      }),
+      async execute(_toolCallId, params) {
+        const parsed = params as { listName: string };
+        const response = await shuvdoClient.listTasks({
+          managerId: descriptor.agentId,
+          listName: parsed.listName
+        });
+        return shuvdoResult("list_tasks", response);
+      }
+    },
+    {
+      name: "create_reminder",
+      label: "Create Reminder",
+      description: "Create reminder item in Shuvdo (requires dueAt).",
+      parameters: Type.Object({
+        listName: Type.String(),
+        dueAt: Type.String({ description: "Required ISO datetime for reminder due time." }),
+        text: Type.String(),
+        repeatRule: Type.Optional(Type.String()),
+        payload: Type.Optional(genericRecordSchema)
+      }),
+      async execute(_toolCallId, params) {
+        const parsed = params as {
+          listName: string;
+          dueAt: string;
+          text: string;
+          repeatRule?: string;
+          payload?: Record<string, unknown>;
+        };
+
+        const body = {
+          ...(parsed.payload ?? {}),
+          text: parsed.text,
+          dueAt: parsed.dueAt,
+          ...(parsed.repeatRule ? { repeatRule: parsed.repeatRule } : {})
+        };
+
+        const response = await shuvdoClient.createReminder({
+          managerId: descriptor.agentId,
+          listName: parsed.listName,
+          body
+        });
+        return shuvdoResult("create_reminder", response);
+      }
+    },
+    {
+      name: "list_due_reminders",
+      label: "List Due Reminders",
+      description: "List due reminders via /api/reminders/next (consumer supports bot|signal).",
+      parameters: Type.Object({
+        limit: Type.Optional(Type.Number({ minimum: 1, maximum: 200 })),
+        consumer: Type.Optional(Type.Union([Type.Literal("bot"), Type.Literal("signal")]))
+      }),
+      async execute(_toolCallId, params) {
+        const parsed = params as { limit?: number; consumer?: "bot" | "signal" };
+        const response = await shuvdoClient.listDueReminders({
+          managerId: descriptor.agentId,
+          limit: parsed.limit,
+          consumer: parsed.consumer
+        });
+        return shuvdoResult("list_due_reminders", response);
+      }
+    },
+    {
+      name: "complete_reminder",
+      label: "Complete Reminder",
+      description: "Complete reminder via /api/reminders/:id/complete with optional idempotency key.",
+      parameters: Type.Object({
+        reminderId: Type.String(),
+        idempotencyKey: Type.Optional(Type.String()),
+        payload: Type.Optional(genericRecordSchema)
+      }),
+      async execute(_toolCallId, params) {
+        const parsed = params as {
+          reminderId: string;
+          idempotencyKey?: string;
+          payload?: Record<string, unknown>;
+        };
+
+        const response = await shuvdoClient.completeReminder({
+          managerId: descriptor.agentId,
+          reminderId: parsed.reminderId,
+          idempotencyKey: parsed.idempotencyKey,
+          body: parsed.payload
+        });
+        return shuvdoResult("complete_reminder", response);
+      }
+    },
+    {
+      name: "list_projects",
+      label: "List Projects",
+      description: "List Shuvdo projects.",
+      parameters: Type.Object({}),
+      async execute() {
+        const response = await shuvdoClient.listProjects({ managerId: descriptor.agentId });
+        return shuvdoResult("list_projects", response);
+      }
+    },
+    {
+      name: "create_project",
+      label: "Create Project",
+      description: "Create Shuvdo project via POST /api/projects/add.",
+      parameters: Type.Object({
+        payload: genericRecordSchema
+      }),
+      async execute(_toolCallId, params) {
+        const parsed = params as { payload: Record<string, unknown> };
+        const response = await shuvdoClient.createProject({
+          managerId: descriptor.agentId,
+          body: parsed.payload
+        });
+        return shuvdoResult("create_project", response);
+      }
+    },
+    {
+      name: "show_project",
+      label: "Show Project",
+      description: "Show Shuvdo project details.",
+      parameters: Type.Object({
+        projectId: Type.String()
+      }),
+      async execute(_toolCallId, params) {
+        const parsed = params as { projectId: string };
+        const response = await shuvdoClient.showProject({
+          managerId: descriptor.agentId,
+          projectId: parsed.projectId
+        });
+        return shuvdoResult("show_project", response);
+      }
+    },
+    {
+      name: "update_project",
+      label: "Update Project",
+      description: "Update Shuvdo project via PATCH /api/projects/:id.",
+      parameters: Type.Object({
+        projectId: Type.String(),
+        payload: genericRecordSchema
+      }),
+      async execute(_toolCallId, params) {
+        const parsed = params as { projectId: string; payload: Record<string, unknown> };
+        const response = await shuvdoClient.updateProject({
+          managerId: descriptor.agentId,
+          projectId: parsed.projectId,
+          body: parsed.payload
+        });
+        return shuvdoResult("update_project", response);
+      }
+    },
+    {
+      name: "create_milestone",
+      label: "Create Milestone",
+      description: "Create Shuvdo milestone via POST /api/projects/:id/milestones/add.",
+      parameters: Type.Object({
+        projectId: Type.String(),
+        payload: genericRecordSchema
+      }),
+      async execute(_toolCallId, params) {
+        const parsed = params as { projectId: string; payload: Record<string, unknown> };
+        const response = await shuvdoClient.createMilestone({
+          managerId: descriptor.agentId,
+          projectId: parsed.projectId,
+          body: parsed.payload
+        });
+        return shuvdoResult("create_milestone", response);
+      }
+    },
+    {
+      name: "update_milestone",
+      label: "Update Milestone",
+      description: "Update Shuvdo milestone via PATCH /api/projects/:id/milestones/:milestoneId.",
+      parameters: Type.Object({
+        projectId: Type.String(),
+        milestoneId: Type.String(),
+        payload: genericRecordSchema
+      }),
+      async execute(_toolCallId, params) {
+        const parsed = params as {
+          projectId: string;
+          milestoneId: string;
+          payload: Record<string, unknown>;
+        };
+
+        const response = await shuvdoClient.updateMilestone({
+          managerId: descriptor.agentId,
+          projectId: parsed.projectId,
+          milestoneId: parsed.milestoneId,
+          body: parsed.payload
+        });
+        return shuvdoResult("update_milestone", response);
+      }
+    },
+    {
+      name: "get_agent_queue",
+      label: "Get Agent Queue",
+      description: "Fetch Shuvdo queue payload for an agent (tasks + reminders).",
+      parameters: Type.Object({
+        agentId: Type.Optional(Type.String()),
+        limit: Type.Optional(Type.Number({ minimum: 1, maximum: 200 }))
+      }),
+      async execute(_toolCallId, params) {
+        const parsed = params as { agentId?: string; limit?: number };
+        const response = await shuvdoClient.getAgentQueue({
+          managerId: descriptor.agentId,
+          agentId: parsed.agentId?.trim() || descriptor.agentId,
+          limit: parsed.limit
+        });
+        return shuvdoResult("get_agent_queue", response);
+      }
+    }
+  ];
+
+  return [...shared, ...managerOnly, ...shuvdoTools];
+}
+
+function shuvdoResult(toolName: string, payload: Record<string, unknown>) {
+  return {
+    content: [
+      {
+        type: "text" as const,
+        text: `${toolName} succeeded.`
+      }
+    ],
+    details: payload
+  };
 }

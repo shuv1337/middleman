@@ -69,6 +69,25 @@ const initialState: ManagerWsState = {
   telegramStatus: null,
 }
 
+function appendWsAuthToken(url: string): string {
+  const authToken =
+    typeof import.meta !== 'undefined' && typeof import.meta.env?.VITE_SHUVLR_AUTH_TOKEN === 'string'
+      ? import.meta.env.VITE_SHUVLR_AUTH_TOKEN.trim()
+      : ''
+
+  if (!authToken) {
+    return url
+  }
+
+  try {
+    const parsed = new URL(url)
+    parsed.searchParams.set('authToken', authToken)
+    return parsed.toString()
+  } catch {
+    return url
+  }
+}
+
 export class ManagerWsClient {
   private readonly url: string
   private desiredAgentId: string | null
@@ -96,7 +115,7 @@ export class ManagerWsClient {
 
   constructor(url: string, initialAgentId?: string | null) {
     const normalizedInitialAgentId = normalizeAgentId(initialAgentId)
-    this.url = url
+    this.url = appendWsAuthToken(url)
     this.desiredAgentId = normalizedInitialAgentId
     this.state = {
       ...initialState,

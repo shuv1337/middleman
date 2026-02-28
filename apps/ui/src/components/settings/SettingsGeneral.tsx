@@ -81,11 +81,11 @@ export function SettingsGeneral({ wsUrl }: SettingsGeneralProps) {
 
       <SettingsSection
         label="System"
-        description="Manage the Middleman daemon"
+        description="Manage the Shuvlr daemon"
       >
         <SettingsWithCTA
           label="Reboot"
-          description="Restart the Middleman daemon and all agents"
+          description="Restart the Shuvlr daemon and all agents"
         >
           <Button
             variant="outline"

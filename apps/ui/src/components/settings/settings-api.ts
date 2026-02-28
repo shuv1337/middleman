@@ -45,6 +45,29 @@ export const DEFAULT_SETTINGS_AUTH_OAUTH_FLOW_STATE: SettingsAuthOAuthFlowState 
   isSubmittingCode: false,
 }
 
+const SETTINGS_AUTH_TOKEN =
+  typeof import.meta !== 'undefined' && typeof import.meta.env?.VITE_SHUVLR_AUTH_TOKEN === 'string'
+    ? import.meta.env.VITE_SHUVLR_AUTH_TOKEN.trim() || undefined
+    : undefined
+
+const fetch = (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+  const nativeFetch = globalThis.fetch.bind(globalThis)
+
+  if (!SETTINGS_AUTH_TOKEN) {
+    return nativeFetch(input, init)
+  }
+
+  const headers = new Headers(init?.headers)
+  if (!headers.has('authorization')) {
+    headers.set('authorization', `Bearer ${SETTINGS_AUTH_TOKEN}`)
+  }
+
+  return nativeFetch(input, {
+    ...init,
+    headers,
+  })
+}
+
 /* ------------------------------------------------------------------ */
 /*  Utilities                                                         */
 /* ------------------------------------------------------------------ */

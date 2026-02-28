@@ -8,6 +8,23 @@ export const SWARM_MODEL_PRESETS = ["pi-codex", "pi-opus", "codex-app"] as const
 
 export type SwarmModelPreset = (typeof SWARM_MODEL_PRESETS)[number];
 
+export const SWARM_CODEX_SANDBOX_MODES = [
+  "danger-full-access",
+  "workspace-write",
+  "read-only"
+] as const;
+
+export type SwarmCodexSandboxMode = (typeof SWARM_CODEX_SANDBOX_MODES)[number];
+
+export const SWARM_CODEX_APPROVAL_POLICIES = [
+  "auto_accept",
+  "deny_all",
+  "deny_command_execution",
+  "deny_file_changes"
+] as const;
+
+export type SwarmCodexApprovalPolicy = (typeof SWARM_CODEX_APPROVAL_POLICIES)[number];
+
 export interface AgentModelDescriptor {
   provider: string;
   modelId: string;
@@ -119,9 +136,14 @@ export interface SwarmConfig {
   port: number;
   debug: boolean;
   allowNonManagerSubscriptions: boolean;
+  authToken?: string;
+  allowedOrigins?: string[];
   managerId?: string;
   managerDisplayName: string;
   defaultModel: AgentModelDescriptor;
+  defaultModelPreset?: SwarmModelPreset;
+  codexSandboxMode?: SwarmCodexSandboxMode;
+  codexApprovalPolicy?: SwarmCodexApprovalPolicy;
   defaultCwd: string;
   cwdAllowlistRoots: string[];
   paths: SwarmPaths;
