@@ -147,7 +147,7 @@ function AgentActivitySlot({
               <CircleDashed
                 className={cn(
                   'absolute inset-0 size-3.5 animate-spin',
-                  isSelected ? 'text-sidebar-accent-foreground/80' : 'text-muted-foreground',
+                  isSelected ? 'text-sidebar-accent-foreground/90' : 'text-[color:var(--fleet-ok)]',
                 )}
                 aria-hidden="true"
               />
@@ -177,7 +177,7 @@ function AgentActivitySlot({
     <CircleDashed
       className={cn(
         'size-3.5 shrink-0 animate-spin',
-        isSelected ? 'text-sidebar-accent-foreground/80' : 'text-muted-foreground',
+        isSelected ? 'text-sidebar-accent-foreground/90' : 'text-[color:var(--fleet-ok)]',
       )}
       aria-label="Active"
     />
@@ -215,10 +215,10 @@ function AgentRow({
       <ContextMenuTrigger asChild>
         <div
           className={cn(
-            'flex w-full items-center gap-1 rounded-md transition-colors',
+            'flex w-full items-center gap-1 rounded-md border border-transparent transition-[background-color,color,border-color]',
             isSelected
-              ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-              : 'text-sidebar-foreground/90 hover:bg-sidebar-accent/50',
+              ? 'border-sidebar-ring/35 bg-sidebar-accent/85 text-sidebar-accent-foreground shadow-[0_8px_18px_rgba(0,0,0,0.22)]'
+              : 'text-sidebar-foreground/90 hover:border-sidebar-border/60 hover:bg-sidebar-accent/55',
             className,
           )}
         >
@@ -237,8 +237,8 @@ function AgentRow({
                 <TooltipTrigger asChild>
                   <span
                     className={cn(
-                      'ml-1 inline-flex h-5 min-w-7 shrink-0 items-center justify-center rounded-sm border border-sidebar-border/80 bg-sidebar-accent/40 px-0.5',
-                      isSelected ? 'border-sidebar-ring/60 bg-sidebar-accent-foreground/10' : '',
+                      'ml-1 inline-flex h-5 min-w-7 shrink-0 items-center justify-center rounded-sm border border-sidebar-border/80 bg-sidebar-accent/45 px-0.5',
+                      isSelected ? 'border-sidebar-ring/70 bg-sidebar-accent-foreground/10' : '',
                     )}
                   >
                     <RuntimeIcon agent={agent} className="size-3 shrink-0 object-contain opacity-90" />
@@ -311,16 +311,17 @@ export function AgentSidebar({
   const sidebarContent = (
     <aside
       className={cn(
-        'flex h-full flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground',
+        'flex h-full flex-col border-r border-sidebar-border bg-[linear-gradient(180deg,rgba(1,17,29,0.98),rgba(1,17,29,0.9))] text-sidebar-foreground backdrop-blur-xl',
+        'shadow-[var(--fleet-shadow)]',
         // Desktop: fixed width in flex layout
-        'max-md:w-full md:w-[20rem] md:min-w-[20rem] md:shrink-0',
+        'max-md:w-full max-md:pt-[var(--safe-top)] md:w-[20rem] md:min-w-[20rem] md:shrink-0',
       )}
     >
       <div className="mb-2 flex h-[62px] shrink-0 items-center gap-2 border-b border-sidebar-border px-2">
         <button
           type="button"
           onClick={onAddManager}
-          className="flex min-h-[44px] flex-1 items-center gap-2 rounded-md p-2 text-sm transition-colors hover:bg-sidebar-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/60"
+          className="flex min-h-[44px] flex-1 items-center gap-2 rounded-md border border-transparent p-2 text-sm transition-[background-color,border-color,color] hover:border-sidebar-border/60 hover:bg-sidebar-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/60"
           title="Create manager"
           aria-label="Add manager"
         >
@@ -331,7 +332,7 @@ export function AgentSidebar({
           <span
             className={cn(
               'inline-block size-1.5 rounded-full',
-              connected ? 'bg-emerald-500' : 'bg-amber-500',
+              connected ? 'bg-[color:var(--fleet-ok)]' : 'bg-[color:var(--fleet-warn)]',
             )}
             title={connected ? 'Connected' : 'Reconnecting'}
           />
@@ -342,7 +343,7 @@ export function AgentSidebar({
           <button
             type="button"
             onClick={onMobileClose}
-            className="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground md:hidden"
+            className="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-sidebar-accent/70 hover:text-sidebar-foreground md:hidden"
             aria-label="Close sidebar"
           >
             <X className="size-4" />
@@ -355,7 +356,7 @@ export function AgentSidebar({
       </div>
 
       <div
-        className="flex-1 overflow-y-auto px-2 pb-2 [color-scheme:light] dark:[color-scheme:dark] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-sidebar-border [&::-webkit-scrollbar-thumb:hover]:bg-sidebar-border/80"
+        className="flex-1 overflow-y-auto px-2 pb-2 [color-scheme:dark] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-sidebar-border/80 [&::-webkit-scrollbar-thumb:hover]:bg-sidebar-ring/70"
         style={{
           scrollbarWidth: 'thin',
           scrollbarColor: 'var(--sidebar-border) transparent',
@@ -494,10 +495,10 @@ export function AgentSidebar({
             type="button"
             onClick={handleOpenSettings}
             className={cn(
-              'flex min-h-[44px] w-full items-center gap-2 rounded-md px-2 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/60',
+              'flex min-h-[44px] w-full items-center gap-2 rounded-md border border-transparent px-2 py-2 text-sm transition-[background-color,border-color,color] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/60',
               isSettingsActive
-                ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                : 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground',
+                ? 'border-sidebar-ring/35 bg-sidebar-accent/85 text-sidebar-accent-foreground'
+                : 'text-muted-foreground hover:border-sidebar-border/60 hover:bg-sidebar-accent/55 hover:text-sidebar-foreground',
             )}
             aria-pressed={isSettingsActive}
           >
@@ -523,7 +524,7 @@ export function AgentSidebar({
         <div className="fixed inset-0 z-40 md:hidden">
           {/* Backdrop */}
           <div
-            className="absolute inset-0 bg-black/50 transition-opacity duration-200"
+            className="absolute inset-0 bg-[rgba(1,17,29,0.72)] transition-opacity duration-200 backdrop-blur-[2px]"
             onClick={onMobileClose}
             aria-hidden="true"
           />

@@ -66,10 +66,10 @@ function ChannelToggleButton({
     <button
       type="button"
       className={cn(
-        'h-[22px] min-w-10 rounded-[4px] px-2 text-[11px] font-medium transition-colors',
+        'h-[22px] min-w-10 rounded-[4px] border border-transparent px-2 text-[11px] font-medium transition-[background-color,color,border-color,box-shadow]',
         active
-          ? 'bg-background text-foreground shadow-sm'
-          : 'text-muted-foreground hover:text-foreground',
+          ? 'border-ring/45 bg-secondary/90 text-foreground shadow-[0_6px_16px_rgba(0,0,0,0.24)]'
+          : 'text-muted-foreground hover:bg-secondary/65 hover:text-foreground',
       )}
       onClick={onClick}
       aria-pressed={active}
@@ -106,14 +106,14 @@ export function ChatHeader({
   const archetypeLabel = activeAgentArchetypeId?.trim()
 
   return (
-    <header className="sticky top-0 z-10 flex h-[62px] w-full shrink-0 items-center justify-between gap-2 overflow-hidden border-b border-border/80 bg-card/80 px-2 backdrop-blur md:px-4">
+    <header className="sticky top-0 z-20 flex h-[62px] w-full shrink-0 items-center justify-between gap-2 overflow-hidden border-b border-border/80 bg-card/70 px-2 shadow-[0_10px_28px_rgba(1,17,29,0.35)] backdrop-blur-xl md:px-4">
       <div className="flex min-w-0 flex-1 items-center gap-2 md:gap-3">
         {/* Mobile hamburger */}
         {onToggleMobileSidebar ? (
           <Button
             variant="ghost"
             size="icon"
-            className="size-9 shrink-0 text-muted-foreground hover:bg-accent/70 hover:text-foreground md:hidden"
+            className="size-9 shrink-0 border border-transparent text-muted-foreground hover:border-border/60 hover:bg-secondary/70 hover:text-foreground md:hidden"
             onClick={onToggleMobileSidebar}
             aria-label="Open sidebar"
           >
@@ -128,14 +128,14 @@ export function ChatHeader({
           <span
             className={cn(
               'absolute inline-flex size-4 rounded-full',
-              isStreaming ? 'animate-ping bg-emerald-500/45' : 'bg-transparent',
+              isStreaming ? 'animate-ping bg-[rgba(173,219,103,0.42)]' : 'bg-transparent',
             )}
             aria-hidden="true"
           />
           <span
             className={cn(
               'relative inline-flex size-2.5 rounded-full',
-              isStreaming ? 'bg-emerald-500' : 'bg-muted-foreground/45',
+              isStreaming ? 'bg-[color:var(--fleet-ok)]' : 'bg-muted-foreground/55',
             )}
             aria-hidden="true"
           />
@@ -150,8 +150,8 @@ export function ChatHeader({
           </h1>
           {archetypeLabel ? (
             <Badge
-              variant="outline"
-              className="h-5 max-w-32 shrink-0 border-border/60 bg-muted/40 px-1.5 text-[10px] font-medium text-muted-foreground"
+              variant="muted"
+              className="h-5 max-w-32 shrink-0 px-1.5 text-[10px] font-medium"
               title={archetypeLabel}
             >
               <span className="truncate">{archetypeLabel}</span>
@@ -169,7 +169,7 @@ export function ChatHeader({
       <div className="flex shrink-0 items-center gap-1.5">
         {/* ── Inline: channel toggle + context window ── */}
         <div className="hidden sm:inline-flex items-center gap-1">
-          <div className="inline-flex h-7 items-center rounded-md border border-border/60 bg-muted/30 p-0.5">
+          <div className="inline-flex h-7 items-center rounded-md border border-border/70 bg-secondary/45 p-0.5 backdrop-blur-sm">
             <ChannelToggleButton
               label="Web"
               active={channelView === 'web'}
@@ -199,13 +199,13 @@ export function ChatHeader({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="size-7 shrink-0 text-muted-foreground hover:bg-accent/70 hover:text-foreground"
+                  className="size-7 shrink-0 border border-transparent text-muted-foreground hover:border-border/60 hover:bg-secondary/70 hover:text-foreground"
                   aria-label="More actions"
                 >
                   <MoreHorizontal className="size-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" sideOffset={6} className="min-w-44">
+              <DropdownMenuContent align="end" sideOffset={6} className="min-w-44 border-border/70 bg-popover/95 backdrop-blur-xl">
                 {showCompact ? (
                   <DropdownMenuItem
                     onClick={onCompact}
@@ -257,10 +257,10 @@ export function ChatHeader({
               variant="ghost"
               size="icon"
               className={cn(
-                'size-7 shrink-0 transition-colors',
+                'size-7 shrink-0 border border-transparent transition-[background-color,color,border-color]',
                 isArtifactsPanelOpen
-                  ? 'bg-accent text-foreground'
-                  : 'text-muted-foreground hover:bg-accent/70 hover:text-foreground',
+                  ? 'border-accent/55 bg-accent/25 text-foreground'
+                  : 'text-muted-foreground hover:border-border/60 hover:bg-secondary/70 hover:text-foreground',
               )}
               onClick={onToggleArtifactsPanel}
               aria-label={isArtifactsPanelOpen ? 'Close artifacts panel' : 'Open artifacts panel'}

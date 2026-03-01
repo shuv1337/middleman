@@ -31,10 +31,10 @@ export function ContextWindowIndicator({
 
   const progressColorClass =
     fillRatio >= 0.95
-      ? 'stroke-red-500'
+      ? 'stroke-[color:var(--fleet-danger)]'
       : fillRatio >= 0.8
-        ? 'stroke-amber-500'
-        : 'stroke-emerald-500'
+        ? 'stroke-[color:var(--fleet-warn)]'
+        : 'stroke-[color:var(--fleet-ok)]'
 
   return (
     <Tooltip>
@@ -42,7 +42,7 @@ export function ContextWindowIndicator({
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 shrink-0 text-muted-foreground hover:bg-accent/70 hover:text-foreground"
+          className="h-8 w-8 shrink-0 border border-transparent text-muted-foreground hover:border-border/60 hover:bg-secondary/70 hover:text-foreground"
           aria-label={`Context window ${percentFull}% full, ${formatTokens(usedTokens)} of ${formatTokens(contextWindow)} tokens used`}
         >
           <svg

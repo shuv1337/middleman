@@ -169,9 +169,9 @@ function SlackConnectionBadge({ status }: { status: SlackStatusEvent | null }) {
   const state = status?.state ?? 'disabled'
   const className =
     state === 'connected'
-      ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+      ? 'border-[rgba(173,219,103,0.45)] bg-[rgba(173,219,103,0.16)] text-[color:var(--fleet-ok)]'
       : state === 'connecting'
-        ? 'border-blue-500/30 bg-blue-500/10 text-blue-600 dark:text-blue-400'
+        ? 'border-primary/45 bg-[rgba(130,170,255,0.16)] text-primary'
         : state === 'error'
           ? 'border-destructive/30 bg-destructive/10 text-destructive'
           : 'border-border/50 bg-muted/50 text-muted-foreground'
@@ -186,9 +186,9 @@ function TelegramConnectionBadge({ status }: { status: TelegramStatusEvent | nul
   const state = status?.state ?? 'disabled'
   const className =
     state === 'connected'
-      ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+      ? 'border-[rgba(173,219,103,0.45)] bg-[rgba(173,219,103,0.16)] text-[color:var(--fleet-ok)]'
       : state === 'connecting'
-        ? 'border-blue-500/30 bg-blue-500/10 text-blue-600 dark:text-blue-400'
+        ? 'border-primary/45 bg-[rgba(130,170,255,0.16)] text-primary'
         : state === 'error'
           ? 'border-destructive/30 bg-destructive/10 text-destructive'
           : 'border-border/50 bg-muted/50 text-muted-foreground'
@@ -203,9 +203,9 @@ function GsuiteConnectionBadge({ status }: { status: GsuiteSettingsStatus | null
   const state = status?.state ?? 'disabled'
   const className =
     state === 'connected'
-      ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+      ? 'border-[rgba(173,219,103,0.45)] bg-[rgba(173,219,103,0.16)] text-[color:var(--fleet-ok)]'
       : state === 'ready'
-        ? 'border-blue-500/30 bg-blue-500/10 text-blue-600 dark:text-blue-400'
+        ? 'border-primary/45 bg-[rgba(130,170,255,0.16)] text-primary'
         : state === 'error'
           ? 'border-destructive/30 bg-destructive/10 text-destructive'
           : 'border-border/50 bg-muted/50 text-muted-foreground'
@@ -251,9 +251,9 @@ function FeedbackBanner({ error, success }: { error: string | null; success: str
         </div>
       ) : null}
       {success ? (
-        <div className="flex items-center gap-2 rounded-md border border-emerald-500/20 bg-emerald-500/10 px-3 py-2">
-          <Check className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
-          <p className="text-xs text-emerald-600 dark:text-emerald-400">{success}</p>
+        <div className="flex items-center gap-2 rounded-md border border-[rgba(173,219,103,0.3)] bg-[rgba(173,219,103,0.14)] px-3 py-2">
+          <Check className="size-3.5 shrink-0 text-[color:var(--fleet-ok)]" />
+          <p className="text-xs text-[color:var(--fleet-ok)]">{success}</p>
         </div>
       ) : null}
     </>

@@ -15,7 +15,7 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      'fixed inset-0 z-50 bg-background/80 backdrop-blur-sm',
+      'fixed inset-0 z-50 bg-[rgba(1,17,29,0.72)] backdrop-blur-md',
       'data-[state=open]:animate-in data-[state=closed]:animate-out',
       className,
     )}
@@ -33,7 +33,7 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        'fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-background p-6 shadow-xl',
+        'fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-[rgba(1,17,29,0.94)] p-6 shadow-[var(--fleet-shadow)] backdrop-blur-xl',
         'data-[state=open]:animate-in data-[state=closed]:animate-out',
         className,
       )}
@@ -42,9 +42,9 @@ const DialogContent = React.forwardRef<
       {children}
       <DialogPrimitive.Close
         className={cn(
-          'absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity',
-          'hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
-          'disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground',
+          'absolute right-4 top-4 rounded-sm text-muted-foreground/80 ring-offset-[color:var(--fleet-bg-deep)] transition-colors',
+          'hover:bg-secondary/80 hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
+          'disabled:pointer-events-none data-[state=open]:bg-secondary data-[state=open]:text-foreground',
         )}
       >
         <X className="h-4 w-4" />

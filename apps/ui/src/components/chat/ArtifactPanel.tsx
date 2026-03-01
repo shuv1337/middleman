@@ -168,7 +168,7 @@ export function ArtifactPanel({ artifact, wsUrl, onClose, onArtifactClick }: Art
             'fixed inset-0 z-50',
             'transition-[backdrop-filter,background-color] duration-300 ease-out',
             isVisible
-              ? 'bg-background/60 backdrop-blur-[2px]'
+              ? 'bg-[rgba(1,17,29,0.74)] backdrop-blur-md'
               : 'pointer-events-none bg-transparent backdrop-blur-0',
             isClosing && !isVisible && 'pointer-events-none',
           )}
@@ -177,8 +177,8 @@ export function ArtifactPanel({ artifact, wsUrl, onClose, onArtifactClick }: Art
           className={cn(
             'fixed right-0 top-0 z-50 flex h-full w-full flex-col',
             'max-md:max-w-full md:max-w-[min(880px,90vw)]',
-            'border-l border-border/80 bg-background',
-            'shadow-[-8px_0_32px_-4px_rgba(0,0,0,0.12)] outline-none',
+            'border-l border-border bg-[rgba(1,17,29,0.95)] backdrop-blur-xl',
+            'shadow-[-12px_0_38px_-10px_rgba(0,0,0,0.55)] outline-none',
             'transition-all duration-[260ms] ease-[cubic-bezier(0.32,0.72,0,1)]',
             isVisible
               ? 'translate-x-0 opacity-100'
@@ -191,9 +191,9 @@ export function ArtifactPanel({ artifact, wsUrl, onClose, onArtifactClick }: Art
         >
           <DialogTitle className="sr-only">{artifact ? `Artifact: ${artifact.fileName}` : 'Artifact panel'}</DialogTitle>
           {/* Header */}
-          <header className="flex h-[62px] shrink-0 items-center justify-between gap-3 border-b border-border/80 bg-card/80 px-5 backdrop-blur">
+          <header className="flex h-[62px] shrink-0 items-center justify-between gap-3 border-b border-border/80 bg-[rgba(1,17,29,0.92)] px-5 backdrop-blur-xl">
             <div className="flex min-w-0 flex-1 items-center gap-3">
-              <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-lg border border-primary/30 bg-[rgba(130,170,255,0.18)] text-primary">
                 <FileIcon className="size-3.5" aria-hidden="true" />
               </span>
               <div className="min-w-0">
@@ -210,7 +210,7 @@ export function ArtifactPanel({ artifact, wsUrl, onClose, onArtifactClick }: Art
                 className={cn(
                   'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium',
                   'text-muted-foreground transition-colors',
-                  'hover:bg-muted hover:text-foreground',
+                  'hover:bg-secondary/80 hover:text-foreground',
                 )}
               >
                 <ExternalLink className="size-3" aria-hidden="true" />
@@ -225,9 +225,9 @@ export function ArtifactPanel({ artifact, wsUrl, onClose, onArtifactClick }: Art
                 variant="ghost"
                 size="icon"
                 className={cn(
-                  'size-8 rounded-md',
+                  'size-8 rounded-md border border-transparent',
                   'text-muted-foreground transition-colors',
-                  'hover:bg-muted hover:text-foreground',
+                  'hover:border-border/60 hover:bg-secondary/80 hover:text-foreground',
                 )}
                 onClick={handleAnimatedClose}
                 aria-label="Close artifact panel"
@@ -262,7 +262,7 @@ export function ArtifactPanel({ artifact, wsUrl, onClose, onArtifactClick }: Art
                     <img
                       src={imageFileUrl}
                       alt={artifact?.fileName || 'Artifact image'}
-                      className="max-h-[calc(100vh-180px)] max-w-full rounded-lg border border-border/60 bg-muted/20 object-contain"
+                      className="max-h-[calc(100vh-180px)] max-w-full rounded-lg border border-border/60 bg-secondary/30 object-contain"
                     />
                   </div>
                 ) : (
@@ -280,7 +280,7 @@ export function ArtifactPanel({ artifact, wsUrl, onClose, onArtifactClick }: Art
                   />
                 </article>
               ) : (
-                <ScrollArea className="w-full rounded-lg border border-border/60 bg-muted/25">
+                <ScrollArea className="w-full rounded-lg border border-border/60 bg-secondary/35">
                   <pre className="p-4">
                     <code className="font-mono text-[13px] leading-relaxed whitespace-pre text-foreground/90">{content}</code>
                   </pre>

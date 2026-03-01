@@ -30,8 +30,8 @@ function StatusBadge({ isSet }: { isSet: boolean }) {
   if (isSet) {
     return (
       <Badge
-        variant="outline"
-        className="gap-1 border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+        variant="ok"
+        className="gap-1"
       >
         <Check className="size-3" />
         Set
@@ -40,8 +40,8 @@ function StatusBadge({ isSet }: { isSet: boolean }) {
   }
   return (
     <Badge
-      variant="outline"
-      className="gap-1 border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+      variant="warn"
+      className="gap-1"
     >
       <AlertTriangle className="size-3" />
       Missing
@@ -255,9 +255,9 @@ export function SettingsSkills({ wsUrl }: SettingsSkillsProps) {
         ) : null}
 
         {success ? (
-          <div className="flex items-center gap-2 rounded-md border border-emerald-500/20 bg-emerald-500/10 px-3 py-2">
-            <Check className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
-            <p className="text-xs text-emerald-600 dark:text-emerald-400">{success}</p>
+          <div className="flex items-center gap-2 rounded-md border border-[rgba(173,219,103,0.3)] bg-[rgba(173,219,103,0.14)] px-3 py-2">
+            <Check className="size-3.5 shrink-0 text-[color:var(--fleet-ok)]" />
+            <p className="text-xs text-[color:var(--fleet-ok)]">{success}</p>
           </div>
         ) : null}
 

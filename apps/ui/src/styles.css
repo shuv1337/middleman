@@ -1,84 +1,71 @@
-@import url("https://fonts.googleapis.com/css2?family=Geist:wght@100..900&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Geist+Mono:wght@100..900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap");
 @import "tailwindcss";
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #f8f5f0;
-  --foreground: #3e2723;
-  --card: #f8f5f0;
-  --card-foreground: #3e2723;
-  --popover: #f8f5f0;
-  --popover-foreground: #3e2723;
-  --primary: #2e7d32;
-  --primary-foreground: #ffffff;
-  --secondary: #b6d3b8;
-  --secondary-foreground: #1b5e20;
-  --muted: #f0e9e0;
-  --muted-foreground: #6d4c41;
-  --accent: #8aba8e;
-  --accent-foreground: #1b5e20;
-  --destructive: #c62828;
-  --destructive-foreground: #ffffff;
-  --border: #e0d6c9;
-  --input: #e0d6c9;
-  --ring: #2e7d32;
-  --chart-1: #4caf50;
-  --chart-2: #388e3c;
-  --chart-3: #2e7d32;
-  --chart-4: #1b5e20;
-  --chart-5: #0a1f0c;
-  --sidebar: #fcfaf8;
-  --sidebar-foreground: #3e2723;
-  --sidebar-primary: #2e7d32;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f5f2ed;
-  --sidebar-accent-foreground: #3e2723;
-  --sidebar-border: #e8e0d6;
-  --sidebar-ring: #2e7d32;
-  --font-sans: "Geist", sans-serif;
-  --font-mono: "Geist Mono", monospace;
-  --radius: 0.5rem;
+  --background: #011627;
+  --foreground: #d6deeb;
+  --card: rgba(1, 17, 29, 0.86);
+  --card-foreground: #d6deeb;
+  --popover: rgba(1, 17, 29, 0.96);
+  --popover-foreground: #d6deeb;
+  --primary: #82aaff;
+  --primary-foreground: #01111d;
+  --secondary: rgba(13, 43, 69, 0.4);
+  --secondary-foreground: #d6deeb;
+  --muted: #0b2239;
+  --muted-foreground: #5f7e97;
+  --accent: #7fdbca;
+  --accent-foreground: #01111d;
+  --destructive: #ef5350;
+  --destructive-foreground: #01111d;
+  --border: rgba(130, 170, 255, 0.24);
+  --input: rgba(130, 170, 255, 0.3);
+  --ring: #82aaff;
+  --chart-1: #82aaff;
+  --chart-2: #7fdbca;
+  --chart-3: #addb67;
+  --chart-4: #f78c6c;
+  --chart-5: #c792ea;
+  --sidebar: #01111d;
+  --sidebar-foreground: #d6deeb;
+  --sidebar-primary: #82aaff;
+  --sidebar-primary-foreground: #01111d;
+  --sidebar-accent: rgba(13, 43, 69, 0.4);
+  --sidebar-accent-foreground: #d6deeb;
+  --sidebar-border: rgba(130, 170, 255, 0.24);
+  --sidebar-ring: #7fdbca;
+  --font-sans: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --radius: 0.75rem;
+
+  --fleet-bg: #011627;
+  --fleet-bg-deep: #01111d;
+  --fleet-bg-muted: #0b2239;
+  --fleet-surface: rgba(1, 17, 29, 0.86);
+  --fleet-surface-strong: rgba(1, 17, 29, 0.96);
+  --fleet-surface-soft: rgba(13, 43, 69, 0.4);
+  --fleet-ok: #addb67;
+  --fleet-warn: #f78c6c;
+  --fleet-danger: #ef5350;
+  --fleet-purple: #c792ea;
+  --fleet-salmon: #ecc48d;
+  --fleet-comment: #637777;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --tab-bar-height: 64px;
+  --fleet-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
 }
 
 .dark {
-  --background: #1a1a1a;
-  --foreground: #f0ebe5;
-  --card: #242424;
-  --card-foreground: #f0ebe5;
-  --popover: #242424;
-  --popover-foreground: #f0ebe5;
-  --primary: #4caf50;
-  --primary-foreground: #0a1f0c;
-  --secondary: #333333;
-  --secondary-foreground: #d7e0d6;
-  --muted: #2a2a2a;
-  --muted-foreground: #d7cfc4;
-  --accent: #2e7d32;
-  --accent-foreground: #ffffff;
-  --destructive: #dc2626;
-  --destructive-foreground: #ffffff;
-  --border: #4a4a4a;
-  --input: #4a4a4a;
-  --ring: #4caf50;
-  --chart-1: #81c784;
-  --chart-2: #66bb6a;
-  --chart-3: #4caf50;
-  --chart-4: #43a047;
-  --chart-5: #388e3c;
-  --sidebar: #161616;
-  --sidebar-foreground: #f0ebe5;
-  --sidebar-primary: #4caf50;
-  --sidebar-primary-foreground: #0a1f0c;
-  --sidebar-accent: #202020;
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: #4a4a4a;
-  --sidebar-ring: #4caf50;
+  color-scheme: dark;
 }
 
 @theme inline {
-  --font-sans: "Geist", sans-serif;
-  --font-mono: "Geist Mono", monospace;
+  --font-sans: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -118,14 +105,80 @@
 
 * {
   @apply border-border outline-ring/50;
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  width: 100%;
+  max-width: 100%;
 }
 
 html,
 body {
-  height: 100%;
-  font-family: var(--font-sans), "Segoe UI", sans-serif;
+  font-family: var(--font-sans), "JetBrains Mono", monospace;
+}
+
+html {
+  background: var(--fleet-bg);
+  color-scheme: dark;
 }
 
 body {
-  @apply m-0 bg-background text-foreground antialiased;
+  @apply m-0 text-foreground antialiased;
+  overflow: hidden;
+  overflow-x: hidden;
+  text-rendering: optimizeLegibility;
+  background:
+    radial-gradient(1000px 520px at -10% -20%, rgba(127, 219, 202, 0.16), transparent 56%),
+    radial-gradient(860px 500px at 110% 4%, rgba(130, 170, 255, 0.17), transparent 50%),
+    linear-gradient(150deg, var(--fleet-bg), var(--fleet-bg-deep) 46%, var(--fleet-bg-muted));
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(214, 222, 235, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(214, 222, 235, 0.05) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mask-image: radial-gradient(circle at center, black, transparent 76%);
+}
+
+a {
+  color: var(--primary);
+}
+
+::selection {
+  background: rgba(130, 170, 255, 0.45);
+  color: var(--primary-foreground);
+}
+
+.fleet-glass {
+  border: 1px solid var(--border);
+  background: var(--fleet-surface);
+  backdrop-filter: blur(10px);
+  box-shadow: var(--fleet-shadow);
+}
+
+.fleet-glass-strong {
+  border: 1px solid var(--border);
+  background: var(--fleet-surface-strong);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--fleet-shadow);
+}
+
+.fleet-glass-soft {
+  border: 1px solid var(--border);
+  background: var(--fleet-surface-soft);
+  backdrop-filter: blur(8px);
+}
+
+.fleet-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
 }

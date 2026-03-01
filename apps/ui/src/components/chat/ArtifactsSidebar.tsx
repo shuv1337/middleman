@@ -351,7 +351,7 @@ export function ArtifactsSidebar({
   return (
     <div
       className={cn(
-        'flex h-full shrink-0 flex-col border-l border-border/80 bg-card/50',
+        'flex h-full shrink-0 flex-col border-l border-border bg-[rgba(1,17,29,0.78)] shadow-[-10px_0_30px_-14px_rgba(0,0,0,0.5)] backdrop-blur-xl',
         'transition-[width,opacity] duration-200 ease-out',
         // Mobile: full screen overlay when open
         isOpen
@@ -371,17 +371,17 @@ export function ArtifactsSidebar({
         }}
         className="h-full gap-0"
       >
-        <div className="flex h-[62px] shrink-0 items-center gap-2 px-3">
-          <TabsList className="h-7 w-full bg-muted/60 p-0.5">
+        <div className="flex h-[62px] shrink-0 items-center gap-2 border-b border-border/70 bg-[rgba(1,17,29,0.88)] px-3">
+          <TabsList className="h-7 w-full border border-border/70 bg-secondary/45 p-0.5 backdrop-blur-sm">
             <TabsTrigger
               value="artifacts"
-              className="h-6 rounded-sm px-2.5 text-[11px] font-medium data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+              className="h-6 rounded-sm border border-transparent px-2.5 text-[11px] font-medium data-[state=active]:border-ring/45 data-[state=active]:bg-secondary/90 data-[state=active]:text-foreground data-[state=active]:shadow-[0_6px_16px_rgba(0,0,0,0.24)]"
             >
               Artifacts
             </TabsTrigger>
             <TabsTrigger
               value="schedules"
-              className="h-6 rounded-sm px-2.5 text-[11px] font-medium data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+              className="h-6 rounded-sm border border-transparent px-2.5 text-[11px] font-medium data-[state=active]:border-ring/45 data-[state=active]:bg-secondary/90 data-[state=active]:text-foreground data-[state=active]:shadow-[0_6px_16px_rgba(0,0,0,0.24)]"
             >
               Schedules
             </TabsTrigger>
@@ -390,7 +390,7 @@ export function ArtifactsSidebar({
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 shrink-0 text-muted-foreground hover:bg-accent/70 hover:text-foreground"
+            className="h-7 w-7 shrink-0 border border-transparent text-muted-foreground hover:border-border/60 hover:bg-secondary/75 hover:text-foreground"
             onClick={onClose}
             aria-label="Close artifacts panel"
           >
@@ -486,8 +486,8 @@ export function ArtifactsSidebar({
                           'transition-colors duration-100',
                           'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/60',
                           selectedSchedule?.id === schedule.id
-                            ? 'bg-accent/50 text-foreground'
-                            : 'text-foreground hover:bg-accent/70',
+                            ? 'border border-ring/35 bg-secondary/78 text-foreground'
+                            : 'border border-transparent text-foreground hover:border-border/60 hover:bg-secondary/62',
                         )}
                         onClick={() => setSelectedScheduleId(schedule.id)}
                         title={schedule.name}
@@ -496,8 +496,8 @@ export function ArtifactsSidebar({
                           className={cn(
                             'inline-flex size-7 shrink-0 items-center justify-center rounded-md transition-colors',
                             selectedSchedule?.id === schedule.id
-                              ? 'bg-primary/15 text-primary'
-                              : 'bg-muted/60 text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary',
+                              ? 'bg-primary/20 text-primary'
+                              : 'bg-secondary/65 text-muted-foreground group-hover:bg-primary/14 group-hover:text-primary',
                           )}
                         >
                           <Clock3 className="size-3.5" aria-hidden="true" />
@@ -574,7 +574,7 @@ export function ArtifactsSidebar({
                       <p className="mb-1.5 text-[11px] font-medium text-muted-foreground">
                         Message
                       </p>
-                      <div className="rounded-lg bg-muted/30 p-2.5 ring-1 ring-border/40">
+                      <div className="rounded-lg bg-secondary/35 p-2.5 ring-1 ring-border/40">
                         <ScrollArea className="max-h-24">
                           <p className="whitespace-pre-wrap break-words text-xs leading-relaxed text-foreground">
                             {selectedSchedule.message}
@@ -607,15 +607,15 @@ function ArtifactRow({
     <button
       type="button"
       className={cn(
-        'group flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left',
-        'transition-colors duration-100',
-        'hover:bg-accent/70',
+        'group flex w-full items-center gap-2.5 rounded-md border border-transparent px-2 py-1.5 text-left',
+        'transition-[background-color,border-color] duration-100',
+        'hover:border-border/60 hover:bg-secondary/62',
         'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/60',
       )}
       onClick={() => onClick(artifact)}
       title={artifact.path}
     >
-      <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-md bg-muted/60 text-muted-foreground transition-colors group-hover:bg-primary/10 group-hover:text-primary">
+      <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-md bg-secondary/65 text-muted-foreground transition-colors group-hover:bg-primary/14 group-hover:text-primary">
         <FileIcon className="size-3.5" aria-hidden="true" />
       </span>
       <span className="min-w-0 flex-1">

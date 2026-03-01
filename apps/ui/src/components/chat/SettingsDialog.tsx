@@ -24,18 +24,20 @@ export function SettingsPanel({
   const [activeTab, setActiveTab] = useState<SettingsTab>('general')
 
   return (
-    <SettingsLayout activeTab={activeTab} onTabChange={setActiveTab} onBack={onBack}>
-      {activeTab === 'general' && <SettingsGeneral wsUrl={wsUrl} />}
-      {activeTab === 'auth' && <SettingsAuth wsUrl={wsUrl} />}
-      {activeTab === 'integrations' && (
-        <SettingsIntegrations
-          wsUrl={wsUrl}
-          managers={managers}
-          slackStatus={slackStatus}
-          telegramStatus={telegramStatus}
-        />
-      )}
-      {activeTab === 'skills' && <SettingsSkills wsUrl={wsUrl} />}
-    </SettingsLayout>
+    <div className="min-h-0 flex flex-1 bg-[linear-gradient(180deg,rgba(1,17,29,0.4),rgba(1,17,29,0.7))]">
+      <SettingsLayout activeTab={activeTab} onTabChange={setActiveTab} onBack={onBack}>
+        {activeTab === 'general' && <SettingsGeneral wsUrl={wsUrl} />}
+        {activeTab === 'auth' && <SettingsAuth wsUrl={wsUrl} />}
+        {activeTab === 'integrations' && (
+          <SettingsIntegrations
+            wsUrl={wsUrl}
+            managers={managers}
+            slackStatus={slackStatus}
+            telegramStatus={telegramStatus}
+          />
+        )}
+        {activeTab === 'skills' && <SettingsSkills wsUrl={wsUrl} />}
+      </SettingsLayout>
+    </div>
   )
 }

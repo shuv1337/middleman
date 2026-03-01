@@ -8,6 +8,9 @@ import tailwindcss from '@tailwindcss/vite'
 import { nitro } from 'nitro/vite'
 
 const config = defineConfig({
+  preview: {
+    allowedHosts: ['shuvdev', 'shuvlr.shuv.dev'],
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

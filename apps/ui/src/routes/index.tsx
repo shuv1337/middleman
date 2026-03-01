@@ -15,6 +15,7 @@ import { ArtifactsSidebar } from '@/components/chat/ArtifactsSidebar'
 import { ChatHeader, type ChannelView } from '@/components/chat/ChatHeader'
 import { MessageInput, type MessageInputHandle } from '@/components/chat/MessageInput'
 import { MessageList } from '@/components/chat/MessageList'
+import { MobileBottomTabs, type MobileChatTab } from '@/components/chat/MobileBottomTabs'
 import { SettingsPanel } from '@/components/chat/SettingsDialog'
 import { Button } from '@/components/ui/button'
 import {
@@ -438,6 +439,18 @@ export function IndexPage() {
   const [pendingResponseStart, setPendingResponseStart] = useState<PendingResponseStart | null>(null)
   const dragDepthRef = useRef(0)
 
+  const activeMobileTab: MobileChatTab = useMemo(() => {
+    if (activeView === 'settings') {
+      return 'settings'
+    }
+
+    if (isMobileSidebarOpen) {
+      return 'agents'
+    }
+
+    return isArtifactsPanelOpen ? 'artifacts' : 'chat'
+  }, [activeView, isArtifactsPanelOpen, isMobileSidebarOpen])
+
   useEffect(() => {
     const client = new ManagerWsClient(wsUrl)
     clientRef.current = client
@@ -588,6 +601,45 @@ export function IndexPage() {
       }
     },
     [navigate, routeState],
+  )
+
+  const handleMobileTabChange = useCallback(
+    (tab: MobileChatTab) => {
+      if (tab === 'agents') {
+        navigateToRoute({
+          view: 'chat',
+          agentId: activeAgentId ?? DEFAULT_MANAGER_AGENT_ID,
+        })
+        setIsArtifactsPanelOpen(false)
+        setIsMobileSidebarOpen(true)
+        return
+      }
+
+      if (tab === 'chat') {
+        navigateToRoute({
+          view: 'chat',
+          agentId: activeAgentId ?? DEFAULT_MANAGER_AGENT_ID,
+        })
+        setIsArtifactsPanelOpen(false)
+        setIsMobileSidebarOpen(false)
+        return
+      }
+
+      if (tab === 'artifacts') {
+        navigateToRoute({
+          view: 'chat',
+          agentId: activeAgentId ?? DEFAULT_MANAGER_AGENT_ID,
+        })
+        setIsMobileSidebarOpen(false)
+        setIsArtifactsPanelOpen(true)
+        return
+      }
+
+      setIsArtifactsPanelOpen(false)
+      setIsMobileSidebarOpen(false)
+      navigateToRoute({ view: 'settings' })
+    },
+    [activeAgentId, navigateToRoute],
   )
 
   useEffect(() => {
@@ -760,6 +812,8 @@ export function IndexPage() {
 
 
   const handleOpenSettingsPanel = () => {
+    setIsArtifactsPanelOpen(false)
+    setIsMobileSidebarOpen(false)
     navigateToRoute({ view: 'settings' })
   }
 
@@ -949,8 +1003,8 @@ export function IndexPage() {
 
   return (
     <TooltipProvider>
-      <main className="h-screen bg-background text-foreground">
-      <div className="flex h-screen w-full min-w-0 overflow-hidden bg-background">
+      <main className="h-screen bg-transparent text-foreground">
+        <div className="flex h-screen w-full min-w-0 overflow-hidden bg-transparent pt-[var(--safe-top)] md:pt-0">
         <AgentSidebar
           connected={state.connected}
           agents={state.agents}
@@ -1055,6 +1109,8 @@ export function IndexPage() {
           )}
         </div>
       </div>
+
+      <MobileBottomTabs activeTab={activeMobileTab} onTabChange={handleMobileTabChange} />
 
       <ArtifactPanel
         artifact={activeArtifact}

@@ -383,20 +383,20 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(fu
   const voiceButtonDisabled = disabled || blockedByLoading || isRequestingMicrophone || isTranscribingVoice
 
   return (
-    <form onSubmit={handleSubmit} className="sticky bottom-0 shrink-0 bg-background p-2 md:p-3">
-      <div className="overflow-hidden rounded-2xl border border-border">
+    <form onSubmit={handleSubmit} className="sticky bottom-[calc(var(--tab-bar-height)+var(--safe-bottom))] z-20 shrink-0 bg-transparent px-2 pb-2 pt-2 md:bottom-0 md:p-3">
+      <div className="overflow-hidden rounded-2xl border border-border bg-card/90 shadow-[var(--fleet-shadow)] backdrop-blur-xl">
         <AttachedFiles attachments={attachedFiles} onRemove={removeAttachment} />
 
         <div className="group flex flex-col">
           {isRecording ? (
-            <div className="flex min-h-[48px] items-center gap-2 border-b border-border/60 bg-red-500/[0.05] px-3 py-2">
+            <div className="flex min-h-[48px] items-center gap-2 border-b border-[rgba(239,83,80,0.3)] bg-[rgba(239,83,80,0.12)] px-3 py-2">
               <div className="flex h-7 flex-1 items-center gap-px py-1" aria-hidden>
                 {activeWaveformBars.map((bar, index) => {
                   const barHeight = Math.max(2, Math.round(bar * 18))
                   return (
                     <span
                       key={index}
-                      className="flex-1 rounded-[1px] bg-red-500/60 transition-[height] duration-150 ease-out"
+                      className="flex-1 rounded-[1px] bg-[rgba(239,83,80,0.7)] transition-[height] duration-150 ease-out"
                       style={{ height: `${barHeight}px` }}
                     />
                   )
@@ -409,7 +409,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(fu
 
               <button
                 type="button"
-                className="flex size-5 shrink-0 items-center justify-center rounded-full bg-red-500 text-white transition-colors hover:bg-red-600 disabled:opacity-50"
+                className="flex size-5 shrink-0 items-center justify-center rounded-full bg-[color:var(--fleet-danger)] text-[color:var(--foreground)] transition-colors hover:bg-[rgba(239,83,80,0.82)] disabled:opacity-50"
                 onClick={() => void stopAndTranscribeRecording()}
                 disabled={voiceButtonDisabled}
                 aria-label="Stop recording"
@@ -455,7 +455,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(fu
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="size-7 rounded-full text-muted-foreground/60 hover:text-foreground"
+                className="size-7 rounded-full border border-transparent text-muted-foreground/75 hover:border-border/60 hover:bg-secondary/70 hover:text-foreground"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={disabled || isRecording}
                 aria-label="Attach files"
@@ -468,10 +468,10 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(fu
                 variant="ghost"
                 size="icon"
                 className={cn(
-                  'size-7 rounded-full transition-colors',
+                  'size-7 rounded-full border border-transparent transition-[background-color,color,border-color]',
                   isRecording
-                    ? 'text-red-500 hover:bg-red-500/10 hover:text-red-600'
-                    : 'text-muted-foreground/60 hover:text-foreground',
+                    ? 'border-[rgba(239,83,80,0.4)] bg-[rgba(239,83,80,0.12)] text-[color:var(--fleet-danger)] hover:bg-[rgba(239,83,80,0.18)]'
+                    : 'text-muted-foreground/75 hover:border-border/60 hover:bg-secondary/70 hover:text-foreground',
                 )}
                 onClick={handleVoiceButtonClick}
                 disabled={voiceButtonDisabled}
@@ -492,10 +492,10 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(fu
               disabled={!canSubmit}
               size="icon"
               className={cn(
-                'size-7 rounded-full transition-all',
+                'size-7 rounded-full border transition-all',
                 canSubmit
-                  ? 'bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95'
-                  : 'cursor-default bg-muted text-muted-foreground/40',
+                  ? 'border-primary/45 bg-primary text-primary-foreground shadow-[0_10px_20px_rgba(130,170,255,0.34)] hover:border-primary/60 hover:bg-primary/92 active:scale-95'
+                  : 'cursor-default border-border/60 bg-secondary/45 text-muted-foreground/55',
               )}
               aria-label="Send message"
             >

@@ -212,10 +212,10 @@ function SourceBadge({
         isUser
           ? 'border-primary-foreground/30 bg-primary-foreground/10 text-primary-foreground/90'
           : sourceContext.channel === 'slack'
-            ? 'border-violet-500/35 bg-violet-500/10 text-violet-700 dark:text-violet-300'
+            ? 'border-[rgba(199,146,234,0.45)] bg-[rgba(199,146,234,0.14)] text-[color:var(--fleet-purple)]'
             : sourceContext.channel === 'telegram'
-              ? 'border-sky-500/35 bg-sky-500/10 text-sky-700 dark:text-sky-300'
-              : 'border-emerald-500/35 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
+              ? 'border-primary/45 bg-primary/14 text-primary'
+              : 'border-[rgba(173,219,103,0.45)] bg-[rgba(173,219,103,0.14)] text-[color:var(--fleet-ok)]',
       )}
     >
       [{label}]
@@ -469,8 +469,8 @@ function ToolPayloadBlock({
           tone === 'error'
             ? 'border-destructive/30 bg-destructive/10 text-destructive'
             : tone === 'cancelled'
-              ? 'border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-300'
-              : 'border-border/70 bg-muted/45 text-foreground',
+              ? 'border-[rgba(247,140,108,0.35)] bg-[rgba(247,140,108,0.14)] text-[color:var(--fleet-warn)]'
+              : 'border-border/70 bg-secondary/45 text-foreground',
         )}
       >
         {formatPayload(value)}
@@ -521,12 +521,12 @@ function ToolExecutionRow({ entry }: { entry: ToolExecutionDisplayEntry }) {
         <span className="mt-0.5 inline-flex size-4 shrink-0 items-center justify-center">
           {displayStatus === 'completed' ? (
             ToolIcon ? (
-              <ToolIcon className="size-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+              <ToolIcon className="size-3.5 text-[color:var(--fleet-ok)]" aria-hidden="true" />
             ) : (
-              <Check className="size-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+              <Check className="size-3.5 text-[color:var(--fleet-ok)]" aria-hidden="true" />
             )
           ) : displayStatus === 'cancelled' ? (
-            <X className="size-3.5 text-rose-500 dark:text-rose-400" aria-hidden="true" />
+            <X className="size-3.5 text-[color:var(--fleet-warn)]" aria-hidden="true" />
           ) : displayStatus === 'error' ? (
             <AlertCircle className="size-3.5 text-destructive" aria-hidden="true" />
           ) : (
@@ -611,28 +611,28 @@ function AgentMessageRow({ message }: { message: AgentMessageEntry }) {
       : null
 
   return (
-    <div className="rounded-lg border border-slate-300/70 bg-slate-50/75 px-3 py-2 text-sm text-slate-800 dark:border-slate-500/30 dark:bg-slate-500/10 dark:text-slate-200">
-      <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-slate-700/80 dark:text-slate-300/90">
+    <div className="rounded-lg border border-border/70 bg-secondary/35 px-3 py-2 text-sm text-foreground shadow-[inset_0_0_0_1px_rgba(130,170,255,0.04)]">
+      <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
         <span>{fromLabel}</span>
         <span>→</span>
         <span>{toLabel}</span>
-        {deliveryLabel ? <span className="normal-case tracking-normal text-slate-700/70 dark:text-slate-300/75">• {deliveryLabel}</span> : null}
+        {deliveryLabel ? <span className="normal-case tracking-normal text-muted-foreground/80">• {deliveryLabel}</span> : null}
       </div>
 
       <div className="mt-1 space-y-1.5">
         {normalizedText ? <p className="whitespace-pre-wrap break-words leading-relaxed">{normalizedText}</p> : null}
         {attachmentCount > 0 ? (
-          <p className="text-[11px] text-slate-700/80 dark:text-slate-300/80">
+          <p className="text-[11px] text-muted-foreground/85">
             Sent {attachmentCount} attachment{attachmentCount === 1 ? '' : 's'}
           </p>
         ) : null}
         {!normalizedText && attachmentCount === 0 ? (
-          <p className="text-[11px] italic text-slate-700/70 dark:text-slate-300/70">(empty message)</p>
+          <p className="text-[11px] italic text-muted-foreground/75">(empty message)</p>
         ) : null}
       </div>
 
       {timestampLabel || sourceContext ? (
-        <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-700/75 dark:text-slate-300/75">
+        <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground/80">
           <SourceBadge sourceContext={sourceContext} />
           {timestampLabel ? <span>{timestampLabel}</span> : null}
         </div>
@@ -745,15 +745,15 @@ function ConversationMessage({
 
   if (message.role === 'system') {
     return (
-      <div className="rounded-lg border border-amber-300/70 bg-amber-50/70 px-3 py-2 text-sm text-amber-950 dark:border-amber-400/30 dark:bg-amber-500/10 dark:text-amber-100">
-        <div className="text-[11px] font-medium uppercase tracking-wide text-amber-700 dark:text-amber-300/90">System</div>
+      <div className="rounded-lg border border-[rgba(247,140,108,0.38)] bg-[rgba(247,140,108,0.12)] px-3 py-2 text-sm text-[color:var(--fleet-salmon)]">
+        <div className="text-[11px] font-medium uppercase tracking-wide text-[color:var(--fleet-warn)]">System</div>
         <div className="mt-1 space-y-2">
           {hasText ? <p className="whitespace-pre-wrap break-words leading-relaxed">{normalizedText}</p> : null}
           <MessageImageAttachments attachments={imageAttachments} isUser={false} />
           <MessageFileAttachments attachments={fileAttachments} isUser={false} />
         </div>
         {timestampLabel || sourceContext ? (
-          <div className="mt-1 flex items-center gap-1.5 text-[11px] text-amber-700/80 dark:text-amber-300/80">
+          <div className="mt-1 flex items-center gap-1.5 text-[11px] text-[rgba(247,140,108,0.85)]">
             <SourceBadge sourceContext={sourceContext} />
             {timestampLabel ? <span>{timestampLabel}</span> : null}
           </div>
@@ -931,7 +931,7 @@ export function MessageList({
   }
 
   return (
-    <div className="relative min-h-0 flex flex-1 flex-col overflow-hidden">
+    <div className="relative min-h-0 flex flex-1 flex-col overflow-hidden bg-[linear-gradient(180deg,rgba(1,17,29,0.28),rgba(1,17,29,0.62))]">
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
@@ -943,7 +943,7 @@ export function MessageList({
           'hover:[&::-webkit-scrollbar-thumb]:bg-border hover:[scrollbar-color:var(--color-border)_transparent]',
         )}
       >
-        <div className="space-y-2 p-2 md:p-3">
+        <div className="space-y-2 p-2 pb-[calc(var(--tab-bar-height)+var(--safe-bottom)+0.75rem)] md:p-3 md:pb-3">
           {displayEntries.map((entry) => {
             if (entry.type === 'conversation_message') {
               return (
@@ -970,7 +970,7 @@ export function MessageList({
         </div>
       </div>
 
-      <div className="pointer-events-none absolute inset-x-0 bottom-4 z-10 flex justify-center px-4">
+      <div className="pointer-events-none absolute inset-x-0 bottom-[calc(var(--tab-bar-height)+var(--safe-bottom)+0.5rem)] z-10 flex justify-center px-4 md:bottom-4">
         <Button
           type="button"
           size="icon"
@@ -979,7 +979,7 @@ export function MessageList({
           aria-label="Scroll to latest message"
           onClick={handleScrollToBottom}
           className={cn(
-            'size-9 rounded-full bg-background/80 text-foreground shadow-md ring-1 ring-border backdrop-blur-sm',
+            'size-9 rounded-full border border-border bg-card/90 text-foreground shadow-[var(--fleet-shadow)] backdrop-blur-md',
             'transition-opacity transition-transform duration-200',
             showScrollButton
               ? 'pointer-events-auto translate-y-0 opacity-100'

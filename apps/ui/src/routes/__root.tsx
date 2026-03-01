@@ -44,12 +44,12 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   }, [])
 
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className="dark" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         <HeadContent />
       </head>
-      <body className="overflow-x-hidden">
+      <body className="overflow-x-hidden bg-transparent text-foreground">
         <TooltipProvider>
           {children}
           <TanStackDevtools

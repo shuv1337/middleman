@@ -7,10 +7,16 @@ const badgeVariants = cva(
   {
     variants: {
       variant: {
-        default: 'border-transparent bg-primary text-primary-foreground',
-        secondary: 'border-transparent bg-secondary text-secondary-foreground',
-        destructive: 'border-transparent bg-destructive text-destructive-foreground',
-        outline: 'text-foreground border-border',
+        default: 'border-primary/45 bg-primary/20 text-primary',
+        secondary: 'border-border/80 bg-secondary/65 text-secondary-foreground',
+        destructive: 'border-[rgba(239,83,80,0.42)] bg-[rgba(239,83,80,0.16)] text-[color:var(--fleet-danger)]',
+        outline: 'border-border text-foreground',
+        info: 'border-[rgba(130,170,255,0.5)] bg-[rgba(130,170,255,0.16)] text-primary',
+        teal: 'border-[rgba(127,219,202,0.5)] bg-[rgba(127,219,202,0.16)] text-[color:var(--accent)]',
+        ok: 'border-[rgba(173,219,103,0.45)] bg-[rgba(173,219,103,0.16)] text-[color:var(--fleet-ok)]',
+        warn: 'border-[rgba(247,140,108,0.45)] bg-[rgba(247,140,108,0.16)] text-[color:var(--fleet-warn)]',
+        danger: 'border-[rgba(239,83,80,0.45)] bg-[rgba(239,83,80,0.16)] text-[color:var(--fleet-danger)]',
+        muted: 'border-border/80 bg-muted/60 text-muted-foreground',
       },
     },
     defaultVariants: {
