@@ -16,7 +16,7 @@
     "dev:site": "pnpm --filter @shuvlr/site dev",
     "build": "pnpm --filter @shuvlr/backend build && pnpm --filter @shuvlr/ui build && pnpm --filter @shuvlr/site build",
     "prod": "pnpm build && pnpm prod:start",
-    "prod:start": "concurrently --kill-others-on-fail --names backend,ui \"NODE_ENV=production SHUVLR_PORT=47287 pnpm --filter @shuvlr/backend start\" \"pnpm --filter @shuvlr/ui preview -- --port 47289 --strictPort --host ${SHUVLR_HOST:-$(node --env-file-if-exists=.env -p 'process.env.SHUVLR_HOST || \"127.0.0.1\"' 2>/dev/null)}\"",
+    "prod:start": "concurrently --kill-others-on-fail --names backend,ui \"NODE_ENV=production SHUVLR_PORT=47287 pnpm --filter @shuvlr/backend start\" \"pnpm --filter @shuvlr/ui preview --port 47289 --strictPort --host ${SHUVLR_HOST:-$(node --env-file-if-exists=.env -p 'process.env.SHUVLR_HOST || \"127.0.0.1\"' 2>/dev/null)}\"",
     "prod:daemon": "node scripts/prod-daemon.mjs",
     "prod:restart": "node scripts/prod-daemon-restart.mjs",
     "test": "pnpm --filter @shuvlr/backend test && pnpm --filter @shuvlr/ui test"
